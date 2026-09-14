@@ -68,15 +68,7 @@ create_db.py      tạo + seed database.db (13 sản phẩm thật lấy từ sc
 database-schema.md  mô tả đầy đủ schema, trigger, lý do thiết kế
 ```
 
-## Vì sao là sqlite3 thuần, không dùng SQLAlchemy?
-
-`database.db` được tạo bởi `create_db.py` với 1 **trigger SQL** (`trg_order_completed_update_stock`) tự
-cộng `sold_count` / trừ `stock` của sản phẩm ngay khi đơn hàng chuyển sang `completed` — logic nghiệp vụ
-này nằm ở tầng database, không phải Python. Dùng ORM sẽ phải định nghĩa lại schema ở 2 nơi (Python model +
-file .sql) mà vẫn không tận dụng được trigger. Giữ sqlite3 thuần + SQL viết tay giúp 1 nguồn schema duy nhất
-(`create_db.py`) và trigger hoạt động đúng như thiết kế.
-
-## Điểm đã cố ý đơn giản hoá (ghi rõ để không hiểu nhầm là bug)
+## Điểm đã cố ý đơn giản hoá
 
 - **Giỏ hàng vẫn ưu tiên `localStorage` phía frontend** cho khách chưa đăng nhập (giữ đúng trải nghiệm gốc:
   thêm vào giỏ không cần đăng nhập). API `/api/cart` đã có sẵn và hoạt động đầy đủ nếu sau này muốn nâng
