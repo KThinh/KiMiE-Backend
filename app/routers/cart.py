@@ -18,7 +18,7 @@ def _load_cart(db: sqlite3.Connection, buyer_id: int) -> CartOut:
     rows = db.execute(
         """SELECT ci.id AS cart_id, ci.quantity,
                    p.id, p.seller_id, p.name, p.description, p.price, p.stock, p.sold_count,
-                   p.rating, p.image_url, p.status, p.created_at, p.updated_at,
+                   p.rating, p.review_count, p.image_url, p.status, p.created_at, p.updated_at,
                    v.code AS village_code, v.name AS village_name,
                    COALESCE(sp.shop_name, u.name) AS shop_name
             FROM cart_items ci
