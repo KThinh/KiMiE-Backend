@@ -4,12 +4,17 @@ Tạo file database.db (SQLite) theo đúng cấu trúc mô tả trong database-
 trong script.js, 3 làng nghề, người bán/người mua mẫu) để file .db dùng được ngay
 cho việc demo/truy vấn thử — không phải bảng rỗng.
 
-Cách dùng:
+Mật khẩu demo của mọi user mẫu là "demo123", băm bằng đúng hàm app.security.hash_password
+mà FastAPI backend dùng để xác thực — nên có thể đăng nhập thật qua POST /api/auth/login
+bằng email của họ (vd. tranvanminh.battrang@kimvie.vn) ngay sau khi seed xong.
+
+Cách dùng (chạy ở thư mục gốc repo, cùng cấp với thư mục app/):
     python create_db.py
 """
 
-import hashlib
 import sqlite3
+
+from app.security import hash_password
 
 DB_PATH = "database.db"
 
@@ -46,19 +51,20 @@ CREATE TABLE seller_profiles (
 );
 
 CREATE TABLE products (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_id   INTEGER NOT NULL REFERENCES users(id),
-    village_id  INTEGER NOT NULL REFERENCES villages(id),
-    name        TEXT NOT NULL,
-    description TEXT,
-    price       REAL NOT NULL CHECK(price > 0),
-    stock       INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),       -- tồn kho
-    sold_count  INTEGER NOT NULL DEFAULT 0 CHECK(sold_count >= 0),  -- đã bán
-    rating      REAL NOT NULL DEFAULT 5.0 CHECK(rating BETWEEN 0 AND 5),
-    image_url   TEXT,
-    status      TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'hidden')),
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id     INTEGER NOT NULL REFERENCES users(id),
+    village_id    INTEGER NOT NULL REFERENCES villages(id),
+    name          TEXT NOT NULL,
+    description   TEXT,
+    price         REAL NOT NULL CHECK(price > 0),
+    stock         INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),       -- tồn kho
+    sold_count    INTEGER NOT NULL DEFAULT 0 CHECK(sold_count >= 0),  -- đã bán
+    rating        REAL NOT NULL DEFAULT 5.0 CHECK(rating BETWEEN 0 AND 5),  -- = AVG(reviews.rating), trigger tự cập nhật
+    review_count  INTEGER NOT NULL DEFAULT 0 CHECK(review_count >= 0),     -- = COUNT(reviews), trigger tự cập nhật
+    image_url     TEXT,
+    status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'hidden')),
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE cart_items (
@@ -94,6 +100,20 @@ CREATE TABLE order_items (
     price_at_purchase  REAL NOT NULL
 );
 
+-- Đánh giá bằng sao (1-5) + bình luận của buyer cho 1 sản phẩm. Mỗi buyer chỉ có
+-- 1 đánh giá cho 1 sản phẩm (UNIQUE) — đánh giá lại thì cập nhật (upsert) thay vì
+-- cộng dồn thêm dòng mới, tránh 1 người "spam" nhiều đánh giá cho cùng 1 món.
+CREATE TABLE reviews (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id  INTEGER NOT NULL REFERENCES products(id),
+    buyer_id    INTEGER NOT NULL REFERENCES users(id),
+    rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+    comment     TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(product_id, buyer_id)
+);
+
 CREATE INDEX idx_products_seller     ON products(seller_id);
 CREATE INDEX idx_products_village    ON products(village_id);
 CREATE INDEX idx_seller_profiles_v   ON seller_profiles(village_id);
@@ -101,6 +121,8 @@ CREATE INDEX idx_cart_buyer          ON cart_items(buyer_id);
 CREATE INDEX idx_orders_buyer        ON orders(buyer_id);
 CREATE INDEX idx_order_items_order   ON order_items(order_id);
 CREATE INDEX idx_order_items_seller  ON order_items(seller_id);
+CREATE INDEX idx_reviews_product     ON reviews(product_id);
+CREATE INDEX idx_reviews_buyer       ON reviews(buyer_id);
 
 CREATE TRIGGER trg_order_completed_update_stock
 AFTER UPDATE OF status ON orders
@@ -117,13 +139,37 @@ BEGIN
         ))
     WHERE id IN (SELECT product_id FROM order_items WHERE order_id = NEW.id);
 END;
+
+-- products.rating/review_count là cột "đúc sẵn" (denormalize) để trang sản phẩm đọc
+-- nhanh mà không phải JOIN/AVG qua bảng reviews mỗi lần hiển thị — 3 trigger dưới
+-- đây giữ chúng luôn khớp với dữ liệu thật trong reviews sau mỗi thêm/sửa/xoá đánh giá.
+CREATE TRIGGER trg_reviews_after_insert
+AFTER INSERT ON reviews
+BEGIN
+    UPDATE products SET
+        rating = (SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = NEW.product_id),
+        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = NEW.product_id)
+    WHERE id = NEW.product_id;
+END;
+
+CREATE TRIGGER trg_reviews_after_update
+AFTER UPDATE ON reviews
+BEGIN
+    UPDATE products SET
+        rating = (SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = NEW.product_id),
+        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = NEW.product_id)
+    WHERE id = NEW.product_id;
+END;
+
+CREATE TRIGGER trg_reviews_after_delete
+AFTER DELETE ON reviews
+BEGIN
+    UPDATE products SET
+        rating = COALESCE((SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = OLD.product_id), 5.0),
+        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = OLD.product_id)
+    WHERE id = OLD.product_id;
+END;
 """
-
-
-def hash_password(plain: str) -> str:
-    """Chỉ demo: băm SHA-256. Khi build backend thật PHẢI thay bằng bcrypt/argon2
-    (có salt riêng từng user) — SHA-256 trần không an toàn cho mật khẩu thật."""
-    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
 
 
 # ---- dữ liệu mẫu: 13 sản phẩm thật đang hiển thị trên Sàn thương mại (script.js) ----
@@ -192,6 +238,37 @@ BUYERS_SEED = [
     ("Đỗ Minh Khang", "dominhkhang@gmail.com", "0977889900", "demo123"),
 ]
 
+# đánh giá mẫu: (mã sản phẩm, người đánh giá, số sao 1-5, bình luận) — người đánh
+# giá không bao giờ trùng chủ shop của sản phẩm đó (không tự đánh giá hàng của mình)
+REVIEWS_SEED = [
+    ("am-tra", "lan", 5, "Men hỏa biến đẹp không tì vết, đóng gói cẩn thận, pha trà rất ngon."),
+    ("am-tra", "hoa", 5, "Chất gốm dày dặn, rót nước không bị chảy tràn — đáng tiền."),
+    ("hu-tra", "khang", 4, "Hũ đẹp, nét vẽ vàng sắc sảo, chỉ hơi nặng tay khi mở nắp."),
+    ("hu-tra", "phu", 5, "Giữ trà thơm lâu hẳn, mua tặng bố rất ưng ý."),
+    ("dia-sen", "lan", 5, "Hoa văn đắp nổi tinh xảo, để trang trí phòng khách rất sang."),
+    ("dia-sen", "khang", 4, "Đĩa đẹp nhưng giao hàng hơi lâu, may là không sứt mẻ gì."),
+    ("cavat-lua", "minh", 5, "Lụa mềm mịn thật sự, màu đỏ đô lên rất trang trọng."),
+    ("cavat-lua", "phu", 4, "Form cà vạt chuẩn, hộp gỗ đi kèm làm quà biếu rất được."),
+    ("khan-sen", "lan", 5, "Khăn nhẹ như không có trên vai, hoa văn sen ẩn hiện đẹp mê."),
+    ("khan-sen", "khang", 5, "Mua tặng mẹ, mẹ khen chất lụa mát và mềm."),
+    ("hop-may", "minh", 4, "Đan tay rất khéo, dùng đựng đồ nhỏ trong nhà gọn gàng hẳn."),
+    ("hop-may", "hoa", 5, "Mây đều màu, không có mùi ẩm mốc như hàng chợ hay gặp."),
+    ("tui-may", "lan", 4, "Túi chắc chắn, quai mây cầm chắc tay, mỗi tội hơi kén trang phục."),
+    ("tui-may", "khang", 5, "Đan xương cá rất tinh tế, đi làm hay đi chơi đều hợp."),
+    ("binh-loc", "hoa", 5, "Dáng bình đẹp, đặt bàn làm việc ai cũng khen phong thủy."),
+    ("binh-loc", "phu", 5, "Nét vẽ vàng sắc nét, đúng như hình quảng cáo."),
+    ("binh-sen", "lan", 5, "Men xanh đồng sang trọng, cắm hoa lên nhìn rất có hồn."),
+    ("binh-sen", "khang", 4, "Bình đẹp nhưng giá hơi cao so với size, chất lượng thì ổn."),
+    ("dia-bau", "hoa", 4, "Đĩa dùng bày món ăn ngày Tết rất hợp, men lam cổ điển."),
+    ("dia-bau", "phu", 5, "Cốt sứ mỏng nhẹ mà chắc tay, không lo sứt mẻ khi dùng thường."),
+    ("khan-nguson", "minh", 5, "Phối màu xanh cam rất bắt mắt, lên hình chụp ảnh đẹp lắm."),
+    ("khan-nguson", "phu", 4, "Khăn đẹp, giao đúng hẹn, đóng gói có túi vải tái sử dụng được."),
+    ("aodai-lua", "lan", 5, "Lụa nguyên tấm mặc mát, hoa văn cẩm giao thanh lịch, may rất khéo."),
+    ("aodai-lua", "khang", 5, "Mua tặng vợ dịp kỷ niệm, vợ mặc đi tiệc ai cũng khen."),
+    ("tui-ruot-may", "minh", 5, "Nan mây đều tăm tắp, dáng hộp cứng cáp mà vẫn nhẹ nhàng."),
+    ("tui-ruot-may", "lan", 4, "Túi xinh, hợp đi làm hằng ngày, ước gì có thêm màu khác."),
+]
+
 
 def seed_data(conn: sqlite3.Connection):
     cur = conn.cursor()
@@ -229,11 +306,21 @@ def seed_data(conn: sqlite3.Connection):
     for pid, name, v_code, price, stock, sold, desc, img in PRODUCTS_SEED:
         cur.execute(
             """INSERT INTO products
-               (seller_id, village_id, name, description, price, stock, sold_count, rating, image_url)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 4.9, ?)""",
+               (seller_id, village_id, name, description, price, stock, sold_count, image_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (seller_user_id[v_code], village_id[v_code], name, desc, price, stock, sold, PROD_DIR + img),
         )
         product_id[pid] = cur.lastrowid
+
+    # đánh giá mẫu — rating/review_count của products sẽ được TRIGGER tự tính lại
+    # từ chính các dòng reviews này (không gõ tay số liệu để tránh lệch dữ liệu)
+    reviewer_id = {"minh": seller_user_id["bt"], "hoa": seller_user_id["vp"], "phu": seller_user_id["pv"],
+                   "lan": buyer_user_id[0], "khang": buyer_user_id[1]}
+    for pid, reviewer_key, rating, comment in REVIEWS_SEED:
+        cur.execute(
+            "INSERT INTO reviews (product_id, buyer_id, rating, comment) VALUES (?, ?, ?, ?)",
+            (product_id[pid], reviewer_id[reviewer_key], rating, comment),
+        )
 
     # giỏ hàng mẫu — Phạm Thị Lan đang xem 2 món
     lan_id = buyer_user_id[0]

@@ -67,7 +67,8 @@ Sản phẩm do seller đăng. So với bản cũ, bổ sung `village_id`, `sold
 | `price` | REAL | Giá bán (> 0) |
 | `stock` | INTEGER | **Tồn kho** — số lượng còn lại có thể bán |
 | `sold_count` | INTEGER | **Mới — đã bán**. Tự động cộng dồn khi 1 đơn hàng chứa sản phẩm này chuyển sang `completed` (xem trigger bên dưới); không tự sửa tay ở tầng ứng dụng để tránh lệch với đơn hàng thật |
-| `rating` | REAL | **Mới** — điểm đánh giá trung bình (0–5), mặc định 5.0, khớp huy hiệu "★ 4.9" trên thẻ sản phẩm |
+| `rating` | REAL | **Mới** — điểm đánh giá trung bình (0–5). Không sửa tay: bằng `AVG(reviews.rating)`, trigger ở bảng `reviews` tự tính lại mỗi khi có đánh giá mới/sửa/xoá; mặc định 5.0 khi chưa có đánh giá nào |
+| `review_count` | INTEGER | **Mới** — số lượng đánh giá, cũng do trigger ở bảng `reviews` tự cập nhật |
 | `image_url` | TEXT | Đường dẫn ảnh sản phẩm |
 | `status` | TEXT | **Mới** — `'active'` (đang bán) / `'hidden'` (seller tạm ẩn khỏi Sàn thương mại) |
 | `created_at` | DATETIME | Thời điểm đăng sản phẩm |
@@ -121,6 +122,26 @@ Chi tiết từng sản phẩm trong 1 đơn hàng (1 đơn có thể chứa nhi
 | `quantity` | INTEGER | Số lượng mua (> 0) |
 | `price_at_purchase` | REAL | Giá tại thời điểm mua (không đổi dù sau này seller sửa giá gốc) |
 
+## 8. Bảng `reviews` — đánh giá sao (1-5) + bình luận (mới)
+
+Đánh giá của buyer cho 1 sản phẩm — vừa cho điểm sao vừa viết bình luận trong cùng 1 dòng
+(không tách 2 bảng riêng vì trên giao diện đây luôn là 1 hành động "gửi đánh giá" duy nhất).
+
+| Cột | Kiểu | Mô tả |
+|---|---|---|
+| `id` | INTEGER, PK, AUTOINCREMENT | Mã đánh giá |
+| `product_id` | INTEGER, FK → `products.id` | Đánh giá cho sản phẩm nào |
+| `buyer_id` | INTEGER, FK → `users.id` | Người đánh giá |
+| `rating` | INTEGER | Số sao, bắt buộc từ 1 đến 5 |
+| `comment` | TEXT | Bình luận (có thể để trống, chỉ cho sao không kèm bình luận) |
+| `created_at` | DATETIME | Thời điểm đánh giá lần đầu |
+| `updated_at` | DATETIME | Thời điểm sửa đánh giá gần nhất |
+
+Ràng buộc `UNIQUE(product_id, buyer_id)`: mỗi buyer chỉ có **1 đánh giá** cho **1 sản phẩm** — đánh giá
+lại thì `INSERT ... ON CONFLICT DO UPDATE` (upsert) ghi đè lên đánh giá cũ thay vì cộng dồn thêm dòng,
+tránh 1 người bấm gửi nhiều lần làm rating trung bình bị lệch. Seller không thể tự đánh giá sản phẩm
+của chính mình (kiểm tra ở tầng API, không phải ràng buộc DB).
+
 ---
 
 ## Sơ đồ quan hệ
@@ -133,8 +154,10 @@ users (1) ───< products (seller_id)
 users (1) ───< cart_items (buyer_id)
 users (1) ───< orders (buyer_id)
 users (1) ───< order_items (seller_id)
+users (1) ───< reviews (buyer_id)
 products (1) ───< cart_items (product_id)
 products (1) ───< order_items (product_id)
+products (1) ───< reviews (product_id)
 orders (1) ───< order_items (order_id)
 ```
 
@@ -168,14 +191,37 @@ END;
 tiếp sang `cancelled`, trigger hiện tại **không** hoàn lại `stock`/`sold_count` — cần thêm 1 trigger
 đối xứng nếu nghiệp vụ thực tế cho phép huỷ đơn sau khi đã xác nhận thanh toán.
 
+## Trigger tự động: cập nhật điểm đánh giá trung bình
+
+Tương tự — thay vì tầng ứng dụng tự `AVG()`/`COUNT()` bảng `reviews` mỗi lần hiển thị sản phẩm
+(chậm, tốn JOIN), 3 trigger dưới đây giữ `products.rating`/`products.review_count` luôn khớp với
+bảng `reviews` ngay sau khi có đánh giá mới, sửa, hoặc xoá:
+
+```sql
+CREATE TRIGGER trg_reviews_after_insert
+AFTER INSERT ON reviews
+BEGIN
+    UPDATE products SET
+        rating = (SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = NEW.product_id),
+        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = NEW.product_id)
+    WHERE id = NEW.product_id;
+END;
+-- trg_reviews_after_update: giống hệt trên nhưng AFTER UPDATE ON reviews
+-- trg_reviews_after_delete: dùng OLD.product_id, COALESCE(..., 5.0) khi hết đánh giá
+```
+
+Xem đầy đủ cả 3 trigger trong [`create_db.py`](create_db.py).
+
 ---
 
 ## Câu lệnh tạo bảng đầy đủ + index
 
 Xem file [`create_db.py`](create_db.py) — chạy `python create_db.py` sẽ tạo lại `database.db` từ đầu
 **kèm dữ liệu mẫu thật** (3 làng nghề, 3 seller + 2 buyer, đúng 13 sản phẩm đang hiển thị trên Sàn
-thương mại lấy từ `script.js`, 1 giỏ hàng mẫu, 1 đơn hàng mẫu đã `completed` để minh hoạ trigger
-hoạt động). File tạo ra dùng được ngay để demo/truy vấn thử, không phải các bảng rỗng.
+thương mại lấy từ `script.js`, 26 đánh giá mẫu — rating/review_count của cả 13 sản phẩm đều do trigger
+tính ra từ chính các đánh giá này chứ không gõ tay, 1 giỏ hàng mẫu, 1 đơn hàng mẫu đã `completed` để
+minh hoạ trigger tồn kho hoạt động). File tạo ra dùng được ngay để demo/truy vấn thử, không phải các
+bảng rỗng.
 
 Các index đã tạo sẵn (khoá ngoại hay dùng để lọc/JOIN):
 
@@ -187,6 +233,8 @@ CREATE INDEX idx_cart_buyer          ON cart_items(buyer_id);
 CREATE INDEX idx_orders_buyer        ON orders(buyer_id);
 CREATE INDEX idx_order_items_order   ON order_items(order_id);
 CREATE INDEX idx_order_items_seller  ON order_items(seller_id);
+CREATE INDEX idx_reviews_product     ON reviews(product_id);
+CREATE INDEX idx_reviews_buyer       ON reviews(buyer_id);
 ```
 
 ---
