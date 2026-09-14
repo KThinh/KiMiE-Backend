@@ -1,23 +1,26 @@
 # KIMVIE Backend
 
-Backend **FastAPI + SQLite** cho website KIMVIE ([`KiMViE-Website`](../KiMViE-Website)) — thay toàn bộ phần
+Backend **FastAPI + PostgreSQL** cho website KIMVIE ([`KiMViE-Website`](../KiMViE-Website)) — thay toàn bộ phần
 "giả lập" bằng `localStorage` trước đây bằng dữ liệu thật: đăng ký/đăng nhập có mật khẩu thật (băm PBKDF2,
 không bao giờ lưu chuỗi gốc), sản phẩm người bán đăng lên được **mọi người ghé site đều thấy** (không chỉ
 riêng máy người đăng) và **sửa lại được bất cứ lúc nào** (tồn kho, mô tả, ảnh, giá, ẩn/hiện...), đặt hàng
 tạo ra đơn hàng thật trong database, tồn kho/số lượng đã bán tự cập nhật qua trigger SQL khi đơn hàng hoàn
 tất, và người mua đánh giá 1-5 sao kèm bình luận cho từng sản phẩm — điểm trung bình cũng do trigger tự tính.
 
-## Chạy thử (2 lệnh)
+## Chạy thử
 
 ```bash
 pip install -r requirements.txt
-python create_db.py        # tạo database.db kèm dữ liệu mẫu (chỉ cần chạy 1 lần, hoặc lại từ đầu bất cứ lúc nào)
+cp .env.example .env       # rồi điền KV_DATABASE_URL = chuỗi kết nối Postgres thật (xem bên dưới)
+python create_db.py        # tạo bảng + dữ liệu mẫu trong Postgres (XOÁ SẠCH bảng cũ mỗi lần chạy lại)
 uvicorn app.app:app --reload
 ```
 
+Cần 1 database PostgreSQL sẵn có (local qua Docker/`postgres.app`, hoặc managed như Render/Supabase/Neon) —
+không có SQLite fallback, `KV_DATABASE_URL` trong `.env` là bắt buộc, xem chi tiết trong `.env.example`.
+
 Mở **http://127.0.0.1:8000** — server này phục vụ luôn cả trang web tĩnh (mount thư mục `../KiMViE-Website`,
 xem `KV_FRONTEND_DIR` trong `.env.example`) lẫn API, nên không cần chạy 2 server riêng và không bị CORS.
-Muốn đổi cấu hình (khoá JWT, đường dẫn frontend...) thì copy `.env.example` → `.env` rồi sửa.
 
 Tài liệu API tự sinh (Swagger UI): **http://127.0.0.1:8000/docs**
 
@@ -36,12 +39,12 @@ Tài liệu API tự sinh (Swagger UI): **http://127.0.0.1:8000/docs**
 ```
 app/
   app.py          FastAPI app: CORS, mount frontend tĩnh, include các router
-  config.py       đọc biến môi trường (.env), đường dẫn DB/frontend, khoá JWT
+  config.py       đọc biến môi trường (.env), chuỗi kết nối DB/frontend, khoá JWT
   security.py     băm mật khẩu (PBKDF2-HMAC-SHA256) + tạo/giải mã JWT
-  database.py     kết nối SQLite dùng chung (sqlite3 thuần, không ORM)
+  database.py     kết nối PostgreSQL dùng chung (psycopg 3 thuần, không ORM)
   deps.py         dependency: get_current_user, require_seller
   schemas.py      Pydantic models (request/response)
-  serializers.py  sqlite3.Row -> Pydantic (product, user)
+  serializers.py  dict (row Postgres) -> Pydantic (product, user)
   routers/
     auth.py       POST /api/auth/register, /login · GET /api/auth/me
     villages.py   GET /api/villages
@@ -50,8 +53,9 @@ app/
     cart.py       GET/POST/PUT/DELETE /api/cart (giỏ hàng theo tài khoản — xem ghi chú bên dưới)
     orders.py     POST /api/orders · POST /api/orders/{id}/confirm-payment · GET /api/orders
     reviews.py    GET/POST /api/products/{id}/reviews · DELETE /api/products/{id}/reviews/me
-create_db.py      tạo + seed database.db (13 sản phẩm thật lấy từ script.js, 3 làng nghề, 5 user mẫu)
-database-schema.md  mô tả đầy đủ schema, trigger, lý do thiết kế
+create_db.py      tạo bảng/trigger + seed dữ liệu mẫu trong Postgres (13 sản phẩm thật lấy từ script.js)
+database-schema.md  mô tả đầy đủ schema, trigger, lý do thiết kế (viết theo cú pháp SQLite cũ — tham
+                    khảo cấu trúc bảng, phần trigger thực tế đã chuyển sang PL/pgSQL trong create_db.py)
 ```
 
 ## Điểm đã cố ý đơn giản hoá

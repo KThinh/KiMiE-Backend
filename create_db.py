@@ -1,175 +1,212 @@
 """
-Tạo file database.db (SQLite) theo đúng cấu trúc mô tả trong database-schema.md,
-đồng thời chèn sẵn dữ liệu mẫu lấy từ chính giao diện trang web (13 sản phẩm thật
-trong script.js, 3 làng nghề, người bán/người mua mẫu) để file .db dùng được ngay
-cho việc demo/truy vấn thử — không phải bảng rỗng.
+Tạo schema (bảng, index, trigger) trong PostgreSQL theo đúng cấu trúc mô tả trong
+database-schema.md, đồng thời chèn sẵn dữ liệu mẫu lấy từ chính giao diện trang web
+(13 sản phẩm thật trong script.js, 3 làng nghề, người bán/người mua mẫu) để database
+dùng được ngay cho việc demo/truy vấn thử — không phải bảng rỗng.
 
 Mật khẩu demo của mọi user mẫu là "demo123", băm bằng đúng hàm app.security.hash_password
 mà FastAPI backend dùng để xác thực — nên có thể đăng nhập thật qua POST /api/auth/login
 bằng email của họ (vd. tranvanminh.battrang@kimvie.vn) ngay sau khi seed xong.
 
-Cách dùng (chạy ở thư mục gốc repo, cùng cấp với thư mục app/):
+Cách dùng (chạy ở thư mục gốc repo, cùng cấp với thư mục app/, đã đặt KV_DATABASE_URL
+trong .env hoặc biến môi trường):
     python create_db.py
+
+CHÚ Ý: script này XOÁ SẠCH (DROP CASCADE) toàn bộ bảng cũ rồi tạo lại từ đầu mỗi lần
+chạy — mất hết dữ liệu thật đã ghi vào lúc chạy (đơn hàng, tài khoản mới đăng ký...).
+Chỉ chạy khi thật sự muốn reset database về đúng trạng thái seed mẫu.
 """
 
-import sqlite3
+import psycopg
 
+from app.config import DATABASE_URL
 from app.security import hash_password
 
-DB_PATH = "database.db"
+DROP_TABLES_SQL = [
+    "DROP TABLE IF EXISTS reviews CASCADE;",
+    "DROP TABLE IF EXISTS order_items CASCADE;",
+    "DROP TABLE IF EXISTS orders CASCADE;",
+    "DROP TABLE IF EXISTS cart_items CASCADE;",
+    "DROP TABLE IF EXISTS products CASCADE;",
+    "DROP TABLE IF EXISTS seller_profiles CASCADE;",
+    "DROP TABLE IF EXISTS users CASCADE;",
+    "DROP TABLE IF EXISTS villages CASCADE;",
+]
 
-# xoá & tạo lại từ đầu mỗi lần chạy để đảm bảo schema + dữ liệu luôn khớp với file mới nhất
-CREATE_TABLES_SQL = """
-PRAGMA foreign_keys = ON;
+CREATE_TABLES_SQL = [
+    """
+    CREATE TABLE villages (
+        id          SERIAL PRIMARY KEY,
+        code        TEXT NOT NULL UNIQUE CHECK(code IN ('bt', 'vp', 'pv')),
+        name        TEXT NOT NULL,
+        craft       TEXT NOT NULL,
+        description TEXT
+    );
+    """,
+    """
+    CREATE TABLE users (
+        id            SERIAL PRIMARY KEY,
+        name          TEXT NOT NULL,
+        email         TEXT NOT NULL UNIQUE,
+        phone         TEXT,
+        password_hash TEXT NOT NULL,
+        is_seller     INTEGER NOT NULL DEFAULT 0 CHECK(is_seller IN (0, 1)),
+        created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
+    CREATE TABLE seller_profiles (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL UNIQUE REFERENCES users(id),
+        shop_name  TEXT NOT NULL,
+        village_id INTEGER NOT NULL REFERENCES villages(id),
+        phone      TEXT,
+        bio        TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
+    CREATE TABLE products (
+        id            SERIAL PRIMARY KEY,
+        seller_id     INTEGER NOT NULL REFERENCES users(id),
+        village_id    INTEGER NOT NULL REFERENCES villages(id),
+        name          TEXT NOT NULL,
+        description   TEXT,
+        price         DOUBLE PRECISION NOT NULL CHECK(price > 0),
+        stock         INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),       -- tồn kho
+        sold_count    INTEGER NOT NULL DEFAULT 0 CHECK(sold_count >= 0),  -- đã bán
+        rating        DOUBLE PRECISION NOT NULL DEFAULT 5.0 CHECK(rating BETWEEN 0 AND 5),  -- = AVG(reviews.rating), trigger tự cập nhật
+        review_count  INTEGER NOT NULL DEFAULT 0 CHECK(review_count >= 0),     -- = COUNT(reviews), trigger tự cập nhật
+        image_url     TEXT,
+        status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'hidden')),
+        created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
+    CREATE TABLE cart_items (
+        id         SERIAL PRIMARY KEY,
+        buyer_id   INTEGER NOT NULL REFERENCES users(id),
+        product_id INTEGER NOT NULL REFERENCES products(id),
+        quantity   INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+        added_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(buyer_id, product_id)
+    );
+    """,
+    """
+    CREATE TABLE orders (
+        id                SERIAL PRIMARY KEY,
+        buyer_id          INTEGER NOT NULL REFERENCES users(id),
+        recipient_name    TEXT NOT NULL,
+        recipient_email   TEXT NOT NULL,
+        recipient_phone   TEXT,
+        shipping_address  TEXT NOT NULL,
+        voucher_code      TEXT,
+        discount_amount   DOUBLE PRECISION NOT NULL DEFAULT 0,
+        total_price       DOUBLE PRECISION NOT NULL,
+        status            TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'cancelled')),
+        created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
+    CREATE TABLE order_items (
+        id                 SERIAL PRIMARY KEY,
+        order_id           INTEGER NOT NULL REFERENCES orders(id),
+        product_id         INTEGER NOT NULL REFERENCES products(id),
+        seller_id          INTEGER NOT NULL REFERENCES users(id),
+        quantity           INTEGER NOT NULL CHECK(quantity > 0),
+        price_at_purchase  DOUBLE PRECISION NOT NULL
+    );
+    """,
+    # Đánh giá bằng sao (1-5) + bình luận của buyer cho 1 sản phẩm. Mỗi buyer chỉ có
+    # 1 đánh giá cho 1 sản phẩm (UNIQUE) — đánh giá lại thì cập nhật (upsert) thay vì
+    # cộng dồn thêm dòng mới, tránh 1 người "spam" nhiều đánh giá cho cùng 1 món.
+    """
+    CREATE TABLE reviews (
+        id          SERIAL PRIMARY KEY,
+        product_id  INTEGER NOT NULL REFERENCES products(id),
+        buyer_id    INTEGER NOT NULL REFERENCES users(id),
+        rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+        comment     TEXT,
+        created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, buyer_id)
+    );
+    """,
+    "CREATE INDEX idx_products_seller     ON products(seller_id);",
+    "CREATE INDEX idx_products_village    ON products(village_id);",
+    "CREATE INDEX idx_seller_profiles_v   ON seller_profiles(village_id);",
+    "CREATE INDEX idx_cart_buyer          ON cart_items(buyer_id);",
+    "CREATE INDEX idx_orders_buyer        ON orders(buyer_id);",
+    "CREATE INDEX idx_order_items_order   ON order_items(order_id);",
+    "CREATE INDEX idx_order_items_seller  ON order_items(seller_id);",
+    "CREATE INDEX idx_reviews_product     ON reviews(product_id);",
+    "CREATE INDEX idx_reviews_buyer       ON reviews(buyer_id);",
+    # SQLite hỗ trợ CREATE TRIGGER ... BEGIN ... END trực tiếp; PostgreSQL bắt buộc tách
+    # riêng 1 hàm PL/pgSQL rồi mới CREATE TRIGGER trỏ vào hàm đó.
+    """
+    CREATE OR REPLACE FUNCTION fn_order_completed_update_stock() RETURNS TRIGGER AS $$
+    BEGIN
+        UPDATE products
+        SET sold_count = sold_count + (
+                SELECT quantity FROM order_items
+                WHERE order_items.order_id = NEW.id AND order_items.product_id = products.id
+            ),
+            stock = GREATEST(0, stock - (
+                SELECT quantity FROM order_items
+                WHERE order_items.order_id = NEW.id AND order_items.product_id = products.id
+            ))
+        WHERE id IN (SELECT product_id FROM order_items WHERE order_id = NEW.id);
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """,
+    """
+    CREATE TRIGGER trg_order_completed_update_stock
+    AFTER UPDATE OF status ON orders
+    FOR EACH ROW
+    WHEN (NEW.status = 'completed' AND OLD.status <> 'completed')
+    EXECUTE FUNCTION fn_order_completed_update_stock();
+    """,
+    # products.rating/review_count là cột "đúc sẵn" (denormalize) để trang sản phẩm đọc
+    # nhanh mà không phải JOIN/AVG qua bảng reviews mỗi lần hiển thị — hàm + 3 trigger dưới
+    # đây giữ chúng luôn khớp với dữ liệu thật trong reviews sau mỗi thêm/sửa/xoá đánh giá.
+    """
+    CREATE OR REPLACE FUNCTION fn_reviews_sync_product() RETURNS TRIGGER AS $$
+    DECLARE
+        pid INTEGER;
+    BEGIN
+        IF TG_OP = 'DELETE' THEN
+            pid := OLD.product_id;
+        ELSE
+            pid := NEW.product_id;
+        END IF;
 
-CREATE TABLE villages (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    code        TEXT NOT NULL UNIQUE CHECK(code IN ('bt', 'vp', 'pv')),
-    name        TEXT NOT NULL,
-    craft       TEXT NOT NULL,
-    description TEXT
-);
+        UPDATE products SET
+            rating = COALESCE((SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = pid), 5.0),
+            review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = pid)
+        WHERE id = pid;
 
-CREATE TABLE users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    name          TEXT NOT NULL,
-    email         TEXT NOT NULL UNIQUE,
-    phone         TEXT,
-    password_hash TEXT NOT NULL,
-    is_seller     INTEGER NOT NULL DEFAULT 0 CHECK(is_seller IN (0, 1)),
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE seller_profiles (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id    INTEGER NOT NULL UNIQUE REFERENCES users(id),
-    shop_name  TEXT NOT NULL,
-    village_id INTEGER NOT NULL REFERENCES villages(id),
-    phone      TEXT,
-    bio        TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE products (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_id     INTEGER NOT NULL REFERENCES users(id),
-    village_id    INTEGER NOT NULL REFERENCES villages(id),
-    name          TEXT NOT NULL,
-    description   TEXT,
-    price         REAL NOT NULL CHECK(price > 0),
-    stock         INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),       -- tồn kho
-    sold_count    INTEGER NOT NULL DEFAULT 0 CHECK(sold_count >= 0),  -- đã bán
-    rating        REAL NOT NULL DEFAULT 5.0 CHECK(rating BETWEEN 0 AND 5),  -- = AVG(reviews.rating), trigger tự cập nhật
-    review_count  INTEGER NOT NULL DEFAULT 0 CHECK(review_count >= 0),     -- = COUNT(reviews), trigger tự cập nhật
-    image_url     TEXT,
-    status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'hidden')),
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE cart_items (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    buyer_id   INTEGER NOT NULL REFERENCES users(id),
-    product_id INTEGER NOT NULL REFERENCES products(id),
-    quantity   INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
-    added_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(buyer_id, product_id)
-);
-
-CREATE TABLE orders (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    buyer_id          INTEGER NOT NULL REFERENCES users(id),
-    recipient_name    TEXT NOT NULL,
-    recipient_email   TEXT NOT NULL,
-    recipient_phone   TEXT,
-    shipping_address  TEXT NOT NULL,
-    voucher_code      TEXT,
-    discount_amount   REAL NOT NULL DEFAULT 0,
-    total_price       REAL NOT NULL,
-    status            TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'cancelled')),
-    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-
-CREATE TABLE order_items (
-    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id           INTEGER NOT NULL REFERENCES orders(id),
-    product_id         INTEGER NOT NULL REFERENCES products(id),
-    seller_id          INTEGER NOT NULL REFERENCES users(id),
-    quantity           INTEGER NOT NULL CHECK(quantity > 0),
-    price_at_purchase  REAL NOT NULL
-);
-
--- Đánh giá bằng sao (1-5) + bình luận của buyer cho 1 sản phẩm. Mỗi buyer chỉ có
--- 1 đánh giá cho 1 sản phẩm (UNIQUE) — đánh giá lại thì cập nhật (upsert) thay vì
--- cộng dồn thêm dòng mới, tránh 1 người "spam" nhiều đánh giá cho cùng 1 món.
-CREATE TABLE reviews (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id  INTEGER NOT NULL REFERENCES products(id),
-    buyer_id    INTEGER NOT NULL REFERENCES users(id),
-    rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-    comment     TEXT,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(product_id, buyer_id)
-);
-
-CREATE INDEX idx_products_seller     ON products(seller_id);
-CREATE INDEX idx_products_village    ON products(village_id);
-CREATE INDEX idx_seller_profiles_v   ON seller_profiles(village_id);
-CREATE INDEX idx_cart_buyer          ON cart_items(buyer_id);
-CREATE INDEX idx_orders_buyer        ON orders(buyer_id);
-CREATE INDEX idx_order_items_order   ON order_items(order_id);
-CREATE INDEX idx_order_items_seller  ON order_items(seller_id);
-CREATE INDEX idx_reviews_product     ON reviews(product_id);
-CREATE INDEX idx_reviews_buyer       ON reviews(buyer_id);
-
-CREATE TRIGGER trg_order_completed_update_stock
-AFTER UPDATE OF status ON orders
-WHEN NEW.status = 'completed' AND OLD.status <> 'completed'
-BEGIN
-    UPDATE products
-    SET sold_count = sold_count + (
-            SELECT quantity FROM order_items
-            WHERE order_items.order_id = NEW.id AND order_items.product_id = products.id
-        ),
-        stock = MAX(0, stock - (
-            SELECT quantity FROM order_items
-            WHERE order_items.order_id = NEW.id AND order_items.product_id = products.id
-        ))
-    WHERE id IN (SELECT product_id FROM order_items WHERE order_id = NEW.id);
-END;
-
--- products.rating/review_count là cột "đúc sẵn" (denormalize) để trang sản phẩm đọc
--- nhanh mà không phải JOIN/AVG qua bảng reviews mỗi lần hiển thị — 3 trigger dưới
--- đây giữ chúng luôn khớp với dữ liệu thật trong reviews sau mỗi thêm/sửa/xoá đánh giá.
-CREATE TRIGGER trg_reviews_after_insert
-AFTER INSERT ON reviews
-BEGIN
-    UPDATE products SET
-        rating = (SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = NEW.product_id),
-        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = NEW.product_id)
-    WHERE id = NEW.product_id;
-END;
-
-CREATE TRIGGER trg_reviews_after_update
-AFTER UPDATE ON reviews
-BEGIN
-    UPDATE products SET
-        rating = (SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = NEW.product_id),
-        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = NEW.product_id)
-    WHERE id = NEW.product_id;
-END;
-
-CREATE TRIGGER trg_reviews_after_delete
-AFTER DELETE ON reviews
-BEGIN
-    UPDATE products SET
-        rating = COALESCE((SELECT ROUND(AVG(rating), 2) FROM reviews WHERE product_id = OLD.product_id), 5.0),
-        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = OLD.product_id)
-    WHERE id = OLD.product_id;
-END;
-"""
+        RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql;
+    """,
+    """
+    CREATE TRIGGER trg_reviews_after_insert
+    AFTER INSERT ON reviews
+    FOR EACH ROW EXECUTE FUNCTION fn_reviews_sync_product();
+    """,
+    """
+    CREATE TRIGGER trg_reviews_after_update
+    AFTER UPDATE ON reviews
+    FOR EACH ROW EXECUTE FUNCTION fn_reviews_sync_product();
+    """,
+    """
+    CREATE TRIGGER trg_reviews_after_delete
+    AFTER DELETE ON reviews
+    FOR EACH ROW EXECUTE FUNCTION fn_reviews_sync_product();
+    """,
+]
 
 
 # ---- dữ liệu mẫu: 13 sản phẩm thật đang hiển thị trên Sàn thương mại (script.js) ----
@@ -270,47 +307,47 @@ REVIEWS_SEED = [
 ]
 
 
-def seed_data(conn: sqlite3.Connection):
+def seed_data(conn: psycopg.Connection):
     cur = conn.cursor()
 
     village_id = {}
     for code, name, craft, desc in VILLAGES_SEED:
         cur.execute(
-            "INSERT INTO villages (code, name, craft, description) VALUES (?, ?, ?, ?)",
+            "INSERT INTO villages (code, name, craft, description) VALUES (%s, %s, %s, %s) RETURNING id",
             (code, name, craft, desc),
         )
-        village_id[code] = cur.lastrowid
+        village_id[code] = cur.fetchone()[0]
 
     seller_user_id = {}
     for name, email, phone, pw, shop_name, v_code, bio in SELLERS_SEED:
         cur.execute(
-            "INSERT INTO users (name, email, phone, password_hash, is_seller) VALUES (?, ?, ?, ?, 1)",
+            "INSERT INTO users (name, email, phone, password_hash, is_seller) VALUES (%s, %s, %s, %s, 1) RETURNING id",
             (name, email, phone, hash_password(pw)),
         )
-        uid = cur.lastrowid
+        uid = cur.fetchone()[0]
         seller_user_id[v_code] = uid
         cur.execute(
-            "INSERT INTO seller_profiles (user_id, shop_name, village_id, phone, bio) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO seller_profiles (user_id, shop_name, village_id, phone, bio) VALUES (%s, %s, %s, %s, %s)",
             (uid, shop_name, village_id[v_code], phone, bio),
         )
 
     buyer_user_id = []
     for name, email, phone, pw in BUYERS_SEED:
         cur.execute(
-            "INSERT INTO users (name, email, phone, password_hash, is_seller) VALUES (?, ?, ?, ?, 0)",
+            "INSERT INTO users (name, email, phone, password_hash, is_seller) VALUES (%s, %s, %s, %s, 0) RETURNING id",
             (name, email, phone, hash_password(pw)),
         )
-        buyer_user_id.append(cur.lastrowid)
+        buyer_user_id.append(cur.fetchone()[0])
 
     product_id = {}
     for pid, name, v_code, price, stock, sold, desc, img in PRODUCTS_SEED:
         cur.execute(
             """INSERT INTO products
                (seller_id, village_id, name, description, price, stock, sold_count, image_url)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
             (seller_user_id[v_code], village_id[v_code], name, desc, price, stock, sold, PROD_DIR + img),
         )
-        product_id[pid] = cur.lastrowid
+        product_id[pid] = cur.fetchone()[0]
 
     # đánh giá mẫu — rating/review_count của products sẽ được TRIGGER tự tính lại
     # từ chính các dòng reviews này (không gõ tay số liệu để tránh lệch dữ liệu)
@@ -318,15 +355,15 @@ def seed_data(conn: sqlite3.Connection):
                    "lan": buyer_user_id[0], "khang": buyer_user_id[1]}
     for pid, reviewer_key, rating, comment in REVIEWS_SEED:
         cur.execute(
-            "INSERT INTO reviews (product_id, buyer_id, rating, comment) VALUES (?, ?, ?, ?)",
+            "INSERT INTO reviews (product_id, buyer_id, rating, comment) VALUES (%s, %s, %s, %s)",
             (product_id[pid], reviewer_id[reviewer_key], rating, comment),
         )
 
     # giỏ hàng mẫu — Phạm Thị Lan đang xem 2 món
     lan_id = buyer_user_id[0]
-    cur.execute("INSERT INTO cart_items (buyer_id, product_id, quantity) VALUES (?, ?, 1)",
+    cur.execute("INSERT INTO cart_items (buyer_id, product_id, quantity) VALUES (%s, %s, 1)",
                 (lan_id, product_id["am-tra"]))
-    cur.execute("INSERT INTO cart_items (buyer_id, product_id, quantity) VALUES (?, ?, 2)",
+    cur.execute("INSERT INTO cart_items (buyer_id, product_id, quantity) VALUES (%s, %s, 2)",
                 (lan_id, product_id["khan-sen"]))
 
     # đơn hàng mẫu — Đỗ Minh Khang đặt 2 sản phẩm, áp voucher GIULUA10 (giảm 10%)
@@ -338,31 +375,45 @@ def seed_data(conn: sqlite3.Connection):
         """INSERT INTO orders
            (buyer_id, recipient_name, recipient_email, recipient_phone, shipping_address,
             voucher_code, discount_amount, total_price, status)
-           VALUES (?, ?, ?, ?, ?, 'GIULUA10', ?, ?, 'pending')""",
+           VALUES (%s, %s, %s, %s, %s, 'GIULUA10', %s, %s, 'pending') RETURNING id""",
         (khang_id, "Đỗ Minh Khang", "dominhkhang@gmail.com", "0977889900",
          "12 Nguyễn Trãi, P. Bến Thành, TP. Hồ Chí Minh", discount, subtotal - discount),
     )
-    order_id = cur.lastrowid
+    order_id = cur.fetchone()[0]
     for pid, qty in items:
         price = next(p[3] for p in PRODUCTS_SEED if p[0] == pid)
         v_code = next(p[2] for p in PRODUCTS_SEED if p[0] == pid)
         cur.execute(
-            "INSERT INTO order_items (order_id, product_id, seller_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO order_items (order_id, product_id, seller_id, quantity, price_at_purchase) VALUES (%s, %s, %s, %s, %s)",
             (order_id, product_id[pid], seller_user_id[v_code], qty, price),
         )
 
     # xác nhận đơn đã thanh toán → trigger tự cộng sold_count / trừ stock cho 2 sản phẩm trên
-    cur.execute("UPDATE orders SET status = 'completed' WHERE id = ?", (order_id,))
+    cur.execute("UPDATE orders SET status = 'completed' WHERE id = %s", (order_id,))
 
 
-def create_database(db_path=DB_PATH):
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    conn.executescript(CREATE_TABLES_SQL)
-    seed_data(conn)
-    conn.commit()
-    conn.close()
-    print(f"Created database: {db_path}")
+def create_database(database_url=None):
+    url = database_url or DATABASE_URL
+    if not url:
+        raise RuntimeError(
+            "Chưa đặt KV_DATABASE_URL — xem .env.example để biết cách lấy chuỗi kết nối "
+            "PostgreSQL từ Render rồi đặt vào file .env."
+        )
+    conn = psycopg.connect(url)
+    try:
+        cur = conn.cursor()
+        for stmt in DROP_TABLES_SQL:
+            cur.execute(stmt)
+        for stmt in CREATE_TABLES_SQL:
+            cur.execute(stmt)
+        seed_data(conn)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    print(f"Created database schema + seed data at: {url.split('@')[-1]}")
 
 
 if __name__ == "__main__":

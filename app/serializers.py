@@ -1,7 +1,7 @@
-"""Chuyển sqlite3.Row -> Pydantic schema. Tách riêng để router nào cũng lắp ráp
+"""Chuyển dict -> Pydantic schema. Tách riêng để router nào cũng lắp ráp
 UserOut/ProductOut giống hệt nhau, không lặp code."""
 
-import sqlite3
+import psycopg
 
 from app.schemas import ProductOut, SellerProfileOut, UserOut
 
@@ -18,7 +18,7 @@ LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 """
 
 
-def row_to_product(row: sqlite3.Row) -> ProductOut:
+def row_to_product(row: dict) -> ProductOut:
     return ProductOut(
         id=row["id"],
         seller_id=row["seller_id"],
@@ -39,13 +39,13 @@ def row_to_product(row: sqlite3.Row) -> ProductOut:
     )
 
 
-def row_to_user(db: sqlite3.Connection, user: sqlite3.Row) -> UserOut:
+def row_to_user(db: psycopg.Connection, user: dict) -> UserOut:
     seller = None
     if user["is_seller"]:
         sp = db.execute(
             """SELECT sp.shop_name, sp.phone, sp.bio, v.code AS village_code, v.name AS village_name
                FROM seller_profiles sp JOIN villages v ON v.id = sp.village_id
-               WHERE sp.user_id = ?""",
+               WHERE sp.user_id = %s""",
             (user["id"],),
         ).fetchone()
         if sp is not None:

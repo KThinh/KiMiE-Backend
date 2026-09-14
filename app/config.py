@@ -9,8 +9,9 @@ from dotenv import load_dotenv
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BACKEND_DIR / ".env")  # không lỗi nếu file .env không tồn tại
 
-# đường dẫn file SQLite — mặc định nằm cạnh create_db.py ở gốc repo backend
-DB_PATH = os.environ.get("KV_DB_PATH", str(BACKEND_DIR / "database.db"))
+# chuỗi kết nối PostgreSQL — BẮT BUỘC đặt qua biến môi trường KV_DATABASE_URL (xem .env.example),
+# không có giá trị mặc định vì mỗi máy/mỗi lần deploy sẽ trỏ tới 1 database Postgres khác nhau.
+DATABASE_URL = os.environ.get("KV_DATABASE_URL")
 
 # thư mục chứa mã nguồn frontend (repo KiMViE-Website) để mount làm static site —
 # mặc định giả sử 2 repo nằm cạnh nhau: .../Github/KiMiE-Backend và .../Github/KiMViE-Website

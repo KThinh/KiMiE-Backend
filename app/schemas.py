@@ -36,7 +36,7 @@ class UserOut(BaseModel):
     email: str
     phone: Optional[str] = None
     is_seller: bool
-    created_at: str
+    created_at: datetime
     seller: Optional[SellerProfileOut] = None
 
 
@@ -99,8 +99,8 @@ class ProductOut(BaseModel):
     review_count: int
     image_url: Optional[str] = None
     status: str
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class ProductListOut(BaseModel):
@@ -174,7 +174,7 @@ class OrderOut(BaseModel):
     recipient_email: str
     recipient_phone: Optional[str] = None
     shipping_address: str
-    created_at: str
+    created_at: datetime
     items: list[OrderItemOut]
 
 
@@ -192,8 +192,8 @@ class ReviewOut(BaseModel):
     buyer_name: str
     rating: int
     comment: Optional[str] = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class ReviewListOut(BaseModel):

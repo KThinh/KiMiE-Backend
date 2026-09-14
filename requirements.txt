@@ -5,3 +5,4 @@ email-validator
 pyjwt
 python-multipart
 python-dotenv
+psycopg[binary]

@@ -1,4 +1,4 @@
-import sqlite3
+import psycopg
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -27,11 +27,11 @@ def _discount_of(code: str | None, subtotal: float) -> float:
     return min(subtotal, v["val"])
 
 
-def _row_to_order(db: sqlite3.Connection, order: sqlite3.Row) -> OrderOut:
+def _row_to_order(db: psycopg.Connection, order: dict) -> OrderOut:
     items = db.execute(
         """SELECT oi.product_id, p.name AS product_name, oi.seller_id, oi.quantity, oi.price_at_purchase
            FROM order_items oi JOIN products p ON p.id = oi.product_id
-           WHERE oi.order_id = ?""",
+           WHERE oi.order_id = %s""",
         (order["id"],),
     ).fetchall()
     return OrderOut(
@@ -52,13 +52,13 @@ def _row_to_order(db: sqlite3.Connection, order: sqlite3.Row) -> OrderOut:
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: OrderCreateIn,
-    user: sqlite3.Row = Depends(get_current_user),
-    db: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    db: psycopg.Connection = Depends(get_db),
 ):
     subtotal = 0.0
     resolved = []  # (product_row, quantity)
     for item in payload.items:
-        product = db.execute("SELECT * FROM products WHERE id = ?", (item.product_id,)).fetchone()
+        product = db.execute("SELECT * FROM products WHERE id = %s", (item.product_id,)).fetchone()
         if product is None or product["status"] != "active":
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sản phẩm #{item.product_id} không còn bán.")
         if product["stock"] < item.quantity:
@@ -76,25 +76,25 @@ def create_order(
         """INSERT INTO orders
                (buyer_id, recipient_name, recipient_email, recipient_phone, shipping_address,
                 voucher_code, discount_amount, total_price, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')""",
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending') RETURNING id""",
         (
             user["id"], payload.recipient_name, payload.recipient_email, payload.recipient_phone,
             payload.shipping_address, payload.voucher_code, discount, total,
         ),
     )
-    order_id = cur.lastrowid
+    order_id = cur.fetchone()["id"]
     for product, qty in resolved:
         db.execute(
-            "INSERT INTO order_items (order_id, product_id, seller_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO order_items (order_id, product_id, seller_id, quantity, price_at_purchase) VALUES (%s, %s, %s, %s, %s)",
             (order_id, product["id"], product["seller_id"], qty, product["price"]),
         )
 
-    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    order = db.execute("SELECT * FROM orders WHERE id = %s", (order_id,)).fetchone()
     return _row_to_order(db, order)
 
 
-def _owned_order(db: sqlite3.Connection, order_id: int, buyer_id: int) -> sqlite3.Row:
-    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+def _owned_order(db: psycopg.Connection, order_id: int, buyer_id: int) -> dict:
+    order = db.execute("SELECT * FROM orders WHERE id = %s", (order_id,)).fetchone()
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy đơn hàng.")
     if order["buyer_id"] != buyer_id:
@@ -105,8 +105,8 @@ def _owned_order(db: sqlite3.Connection, order_id: int, buyer_id: int) -> sqlite
 @router.post("/{order_id}/confirm-payment", response_model=OrderOut)
 def confirm_payment(
     order_id: int,
-    user: sqlite3.Row = Depends(get_current_user),
-    db: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    db: psycopg.Connection = Depends(get_db),
 ):
     order = _owned_order(db, order_id, user["id"])
     if order["status"] != "pending":
@@ -117,7 +117,7 @@ def confirm_payment(
     items = db.execute(
         """SELECT oi.product_id, oi.quantity, p.name, p.stock
            FROM order_items oi JOIN products p ON p.id = oi.product_id
-           WHERE oi.order_id = ?""",
+           WHERE oi.order_id = %s""",
         (order_id,),
     ).fetchall()
     for it in items:
@@ -127,18 +127,18 @@ def confirm_payment(
                 f"'{it['name']}' vừa hết hàng trong lúc chờ thanh toán — vui lòng liên hệ hỗ trợ.",
             )
 
-    db.execute("UPDATE orders SET status = 'completed' WHERE id = ?", (order_id,))
-    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    db.execute("UPDATE orders SET status = 'completed' WHERE id = %s", (order_id,))
+    order = db.execute("SELECT * FROM orders WHERE id = %s", (order_id,)).fetchone()
     return _row_to_order(db, order)
 
 
 @router.get("", response_model=list[OrderOut])
-def my_orders(user: sqlite3.Row = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
-    rows = db.execute("SELECT * FROM orders WHERE buyer_id = ? ORDER BY created_at DESC", (user["id"],)).fetchall()
+def my_orders(user: dict = Depends(get_current_user), db: psycopg.Connection = Depends(get_db)):
+    rows = db.execute("SELECT * FROM orders WHERE buyer_id = %s ORDER BY created_at DESC", (user["id"],)).fetchall()
     return [_row_to_order(db, r) for r in rows]
 
 
 @router.get("/{order_id}", response_model=OrderOut)
-def get_order(order_id: int, user: sqlite3.Row = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
+def get_order(order_id: int, user: dict = Depends(get_current_user), db: psycopg.Connection = Depends(get_db)):
     order = _owned_order(db, order_id, user["id"])
     return _row_to_order(db, order)

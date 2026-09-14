@@ -1,4 +1,4 @@
-import sqlite3
+import psycopg
 
 from fastapi import APIRouter, Depends
 
@@ -9,6 +9,6 @@ router = APIRouter(prefix="/api/villages", tags=["villages"])
 
 
 @router.get("", response_model=list[VillageOut])
-def list_villages(db: sqlite3.Connection = Depends(get_db)):
+def list_villages(db: psycopg.Connection = Depends(get_db)):
     rows = db.execute("SELECT * FROM villages ORDER BY id").fetchall()
     return [VillageOut(**dict(r)) for r in rows]
