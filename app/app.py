@@ -1,8 +1,6 @@
 """KIMVIE backend — FastAPI phục vụ REST API (đọc/ghi thẳng vào database.db) và,
 khi tìm thấy repo frontend cạnh bên, mount luôn trang web tĩnh để 1 lệnh
-`uvicorn app.app:app` là chạy được cả web lẫn API trên cùng 1 origin (khỏi lo CORS).
-Deploy lên Hugging Face Spaces (SDK Gradio) thì chạy qua file `app.py` ở gốc repo —
-xem file đó để biết phần mount Gradio + khởi động uvicorn thủ công trên cổng Spaces."""
+`uvicorn app.app:app` là chạy được cả web lẫn API trên cùng 1 origin (khỏi lo CORS)."""
 
 import os
 import sqlite3
@@ -48,15 +46,11 @@ def health():
 
 @app.on_event("startup")
 def check_database():
-    # Hugging Face Spaces không có shell để chạy `python create_db.py` thủ công, và filesystem
-    # là ephemeral (mất hết sau mỗi lần Space restart/rebuild trừ khi bật Persistent Storage trả
-    # phí) — nên nếu chưa có DB thì tự tạo + seed luôn lúc khởi động thay vì báo lỗi rồi dừng.
     if not os.path.isfile(DB_PATH):
-        from create_db import create_database
-
-        create_database(DB_PATH)
-        return
-
+        raise RuntimeError(
+            f"Không tìm thấy database tại '{DB_PATH}'. Chạy `python create_db.py` ở thư mục gốc "
+            "backend trước để tạo + seed database.db, rồi khởi động lại server."
+        )
     # kiểm tra nhanh bảng cốt lõi đã tồn tại, tránh chạy nhầm với file .db cũ/khác schema
     conn = sqlite3.connect(DB_PATH)
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
