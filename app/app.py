@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import FRONTEND_DIR
 from app.database import db_session
-from app.routers import auth, cart, orders, products, reviews, seller, villages
+from app.routers import addresses, auth, cart, notifications, orders, products, reviews, seller, villages, wishlist
 
 app = FastAPI(
     title="KIMVIE API",
@@ -35,6 +35,10 @@ app.include_router(seller.router)
 app.include_router(cart.router)
 app.include_router(orders.router)
 app.include_router(reviews.router)
+app.include_router(reviews.me_router)
+app.include_router(wishlist.router)
+app.include_router(addresses.router)
+app.include_router(notifications.router)
 
 
 @app.get("/api/health")
@@ -61,7 +65,10 @@ def check_database():
 
     # kiểm tra nhanh bảng cốt lõi đã tồn tại, tránh chạy nhầm với database rỗng/khác schema
     tables = {r["table_name"] for r in rows}
-    required = {"users", "products", "villages", "seller_profiles", "orders", "order_items", "cart_items", "reviews"}
+    required = {
+        "users", "products", "villages", "seller_profiles", "orders", "order_items", "cart_items", "reviews",
+        "product_images", "review_images", "wishlist_items", "addresses", "order_payments", "notifications",
+    }
     missing = required - tables
     if missing:
         raise RuntimeError(
