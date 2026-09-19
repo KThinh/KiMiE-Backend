@@ -35,6 +35,14 @@ class ChangePasswordIn(BaseModel):
     new_password: str = Field(min_length=6, max_length=200)
 
 
+class ResetPasswordIn(BaseModel):
+    """Quên mật khẩu: xác định tài khoản chỉ bằng username (không email xác thực) —
+    người dùng nhập username + mật khẩu mới + nhập lại, khớp CSDL nào cập nhật đó."""
+    username: str
+    new_password: str = Field(min_length=6, max_length=200)
+    confirm_password: str
+
+
 class SellerProfileOut(BaseModel):
     shop_name: str
     village_code: str

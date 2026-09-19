@@ -6,6 +6,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.schemas import (
     ChangePasswordIn,
+    ResetPasswordIn,
     TokenOut,
     UserLoginIn,
     UserOut,
@@ -82,4 +83,16 @@ def change_password(
 ):
     if not verify_password(payload.current_password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Mật khẩu hiện tại không đúng.")
+    db.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hash_password(payload.new_password), user["id"]))
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(payload: ResetPasswordIn, db: psycopg.Connection = Depends(get_db)):
+    """Quên mật khẩu — không yêu cầu đăng nhập. Chỉ xác định tài khoản qua username
+    (đã UNIQUE trong bảng users), không có bước xác thực email/OTP nào khác."""
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mật khẩu nhập lại không khớp.")
+    user = db.execute("SELECT id FROM users WHERE username = %s", (payload.username,)).fetchone()
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy tài khoản với tên đăng nhập này.")
     db.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hash_password(payload.new_password), user["id"]))
