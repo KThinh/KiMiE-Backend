@@ -24,6 +24,7 @@ from app.config import DATABASE_URL
 from app.security import hash_password
 
 DROP_TABLES_SQL = [
+    "DROP TABLE IF EXISTS passport_stamps CASCADE;",
     "DROP TABLE IF EXISTS notifications CASCADE;",
     "DROP TABLE IF EXISTS order_payments CASCADE;",
     "DROP TABLE IF EXISTS review_images CASCADE;",
@@ -186,6 +187,14 @@ CREATE_TABLES_SQL = [
         status               TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'failed')),
         created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(order_id, seller_id)
+    );
+    """,
+    """
+    CREATE TABLE passport_stamps (
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        stamp_id   TEXT NOT NULL,                          -- id con dấu, khớp STAMPS ở script.js
+        earned_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, stamp_id)
     );
     """,
     """

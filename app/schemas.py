@@ -225,6 +225,16 @@ class WishlistIn(BaseModel):
     product_id: int
 
 
+# ---------- hộ chiếu di sản ----------
+
+class PassportStampIn(BaseModel):
+    stamp_id: str = Field(min_length=1, max_length=20)
+
+
+class PassportOut(BaseModel):
+    stamps: dict[str, datetime]   # stamp_id -> thời điểm nhận dấu
+
+
 class WishlistItemOut(BaseModel):
     id: int
     product: ProductOut

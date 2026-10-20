@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import FRONTEND_DIR
 from app.database import db_session
-from app.routers import addresses, auth, cart, notifications, orders, products, reviews, seller, villages, wishlist
+from app.routers import addresses, auth, cart, notifications, orders, passport, products, reviews, seller, villages, wishlist
 
 app = FastAPI(
     title="KIMVIE API",
@@ -39,6 +39,7 @@ app.include_router(reviews.me_router)
 app.include_router(wishlist.router)
 app.include_router(addresses.router)
 app.include_router(notifications.router)
+app.include_router(passport.router)
 
 
 @app.get("/api/health")
@@ -74,6 +75,10 @@ def check_database():
         raise RuntimeError(
             f"Database thiếu bảng {missing} — chạy `python create_db.py` để tạo + seed theo schema mới nhất."
         )
+
+    # bảng hộ chiếu di sản thêm sau — tự tạo nếu chưa có để khỏi phải seed lại (create_db.py xoá sạch dữ liệu)
+    with db_session() as conn:
+        conn.execute(passport.CREATE_TABLE_SQL)
 
 
 # ---- mount frontend tĩnh (index.html/script.js/styles.css/assets/...) nếu tìm thấy ----
