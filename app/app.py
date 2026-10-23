@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import FRONTEND_DIR
 from app.database import db_session
+from app.product_content import PRODUCT_CONTENT
 from app.routers import addresses, auth, cart, notifications, orders, passport, products, reviews, seller, villages, wishlist
 
 app = FastAPI(
@@ -79,6 +80,14 @@ def check_database():
     # bảng hộ chiếu di sản thêm sau — tự tạo nếu chưa có để khỏi phải seed lại (create_db.py xoá sạch dữ liệu)
     with db_session() as conn:
         conn.execute(passport.CREATE_TABLE_SQL)
+        # cột câu chuyện sản phẩm thêm sau + điền mô tả/câu chuyện cho các sản phẩm mẫu chưa có
+        # (chỉ khi story còn trống, không ghi đè nội dung người bán đã tự viết)
+        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS story TEXT")
+        for name, content in PRODUCT_CONTENT.items():
+            conn.execute(
+                "UPDATE products SET description = %s, story = %s WHERE name = %s AND story IS NULL",
+                (content["description"], content["story"], name),
+            )
 
 
 # ---- mount frontend tĩnh (index.html/script.js/styles.css/assets/...) nếu tìm thấy ----

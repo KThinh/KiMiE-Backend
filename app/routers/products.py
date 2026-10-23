@@ -125,11 +125,11 @@ def create_product(
     village_id = _village_id(db, payload.village_code)
     cur = db.execute(
         """INSERT INTO products
-               (seller_id, village_id, name, description, material, size_guide, colors, sizes,
+               (seller_id, village_id, name, description, story, material, size_guide, colors, sizes,
                 price, original_price, stock, image_url)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (
-            seller["id"], village_id, payload.name, payload.description, payload.material, payload.size_guide,
+            seller["id"], village_id, payload.name, payload.description, payload.story, payload.material, payload.size_guide,
             payload.colors, payload.sizes, payload.price, payload.original_price, payload.stock, payload.image_url,
         ),
     )
@@ -164,7 +164,7 @@ def update_product(
     db.execute(
         """UPDATE products SET
                name = %s, village_id = %s, price = %s, original_price = %s, stock = %s,
-               description = %s, material = %s, size_guide = %s, colors = %s, sizes = %s,
+               description = %s, story = %s, material = %s, size_guide = %s, colors = %s, sizes = %s,
                image_url = %s, status = %s, updated_at = CURRENT_TIMESTAMP
            WHERE id = %s""",
         (
@@ -174,6 +174,7 @@ def update_product(
             payload.original_price if payload.original_price is not None else existing["original_price"],
             payload.stock if payload.stock is not None else existing["stock"],
             payload.description if payload.description is not None else existing["description"],
+            payload.story if payload.story is not None else existing["story"],
             payload.material if payload.material is not None else existing["material"],
             payload.size_guide if payload.size_guide is not None else existing["size_guide"],
             payload.colors if payload.colors is not None else existing["colors"],

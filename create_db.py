@@ -21,6 +21,7 @@ Chỉ chạy khi thật sự muốn reset database về đúng trạng thái see
 import psycopg
 
 from app.config import DATABASE_URL
+from app.product_content import PRODUCT_CONTENT
 from app.security import hash_password
 
 DROP_TABLES_SQL = [
@@ -83,6 +84,7 @@ CREATE_TABLES_SQL = [
         village_id     INTEGER NOT NULL REFERENCES villages(id),
         name           TEXT NOT NULL,
         description    TEXT,
+        story          TEXT,             -- câu chuyện sản phẩm
         material       TEXT,             -- chất liệu
         size_guide     TEXT,             -- hướng dẫn chọn size
         colors         TEXT,             -- danh sách màu, phân cách bởi dấu phẩy
@@ -484,12 +486,14 @@ def seed_data(conn: psycopg.Connection):
 
     product_id = {}
     for pid, name, v_code, price, orig, stock, sold, desc, img, material, size_guide, colors, sizes in PRODUCTS_SEED:
+        content = PRODUCT_CONTENT.get(name, {})
         cur.execute(
             """INSERT INTO products
-               (seller_id, village_id, name, description, material, size_guide, colors, sizes,
+               (seller_id, village_id, name, description, story, material, size_guide, colors, sizes,
                 price, original_price, stock, sold_count, image_url)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (seller_user_id[v_code], village_id[v_code], name, desc, material, size_guide, colors, sizes,
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (seller_user_id[v_code], village_id[v_code], name, content.get("description", desc), content.get("story"),
+             material, size_guide, colors, sizes,
              price, orig, stock, sold, PROD_DIR + img),
         )
         product_id[pid] = cur.fetchone()[0]

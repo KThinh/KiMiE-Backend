@@ -97,6 +97,7 @@ class ProductIn(BaseModel):
     original_price: Optional[float] = Field(default=None, gt=0)  # có giá này + > price => đang sale
     stock: int = Field(ge=0)
     description: Optional[str] = None
+    story: Optional[str] = None  # câu chuyện sản phẩm (hiển thị ở tab riêng)
     material: Optional[str] = None
     size_guide: Optional[str] = None
     colors: Optional[str] = None  # danh sách phân cách bởi dấu phẩy, vd "Xanh,Đỏ,Vàng"
@@ -112,6 +113,7 @@ class ProductUpdateIn(BaseModel):
     original_price: Optional[float] = Field(default=None, gt=0)
     stock: Optional[int] = Field(default=None, ge=0)
     description: Optional[str] = None
+    story: Optional[str] = None  # câu chuyện sản phẩm (hiển thị ở tab riêng)
     material: Optional[str] = None
     size_guide: Optional[str] = None
     colors: Optional[str] = None
@@ -129,6 +131,7 @@ class ProductOut(BaseModel):
     village_name: str
     name: str
     description: Optional[str] = None
+    story: Optional[str] = None  # câu chuyện sản phẩm (hiển thị ở tab riêng)
     material: Optional[str] = None
     size_guide: Optional[str] = None
     colors: list[str] = Field(default_factory=list)

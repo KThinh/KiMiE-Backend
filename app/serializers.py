@@ -7,7 +7,7 @@ from app.schemas import ProductOut, SellerProfileOut, UserOut
 
 PRODUCT_SELECT = """
 SELECT
-    p.id, p.seller_id, p.name, p.description, p.material, p.size_guide,
+    p.id, p.seller_id, p.name, p.description, p.story, p.material, p.size_guide,
     p.colors, p.sizes, p.price, p.original_price, p.stock, p.sold_count,
     p.rating, p.review_count, p.image_url, p.status, p.created_at, p.updated_at,
     (p.original_price IS NOT NULL AND p.original_price > p.price) AS is_sale_flag,
@@ -41,6 +41,7 @@ def row_to_product(row: dict) -> ProductOut:
         village_name=row["village_name"],
         name=row["name"],
         description=row["description"],
+        story=row["story"],
         material=row["material"],
         size_guide=row["size_guide"],
         colors=_split_csv(row["colors"]),
