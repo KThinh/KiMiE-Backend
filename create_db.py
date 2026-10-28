@@ -527,75 +527,7 @@ def seed_data(conn: psycopg.Connection):
     cur.execute("INSERT INTO cart_items (buyer_id, product_id, quantity) VALUES (%s, %s, 2)",
                 (lan_id, product_id["khan-sen"]))
 
-    # --- đơn hàng mẫu #1: Đỗ Minh Khang — đã thanh toán xong CẢ 2 bên và đã giao xong,
-    # dùng để demo timeline hoàn chỉnh + có thể để lại đánh giá (đã "delivered")
-    items1 = [("cavat-lua", "vp", 1), ("hop-may", "pv", 2)]
-    subtotal1 = sum(next(p[3] for p in PRODUCTS_SEED if p[0] == pid) * qty for pid, _, qty in items1)
-    discount1 = round(subtotal1 * 0.10)
-    shipping_fee1 = 20_000
-    cur.execute(
-        """INSERT INTO orders
-           (buyer_id, recipient_name, recipient_email, recipient_phone, shipping_address, shipping_method,
-            shipping_fee, voucher_code, discount_amount, total_price, status)
-           VALUES (%s, %s, %s, %s, %s, 'standard', %s, 'GIULUA10', %s, %s, 'delivered') RETURNING id""",
-        (khang_id, "Đỗ Minh Khang", "dominhkhang@gmail.com", "0977889900",
-         "12 Nguyễn Trãi, P. Bến Thành, TP. Hồ Chí Minh", shipping_fee1, discount1,
-         subtotal1 - discount1 + shipping_fee1),
-    )
-    order1_id = cur.fetchone()[0]
-    by_seller1: dict[int, float] = {}
-    for pid, v_code, qty in items1:
-        price = next(p[3] for p in PRODUCTS_SEED if p[0] == pid)
-        seller_id = seller_user_id[v_code]
-        cur.execute(
-            """INSERT INTO order_items (order_id, product_id, seller_id, quantity, price_at_purchase, item_status)
-               VALUES (%s, %s, %s, %s, %s, 'delivered')""",
-            (order1_id, product_id[pid], seller_id, qty, price),
-        )
-        by_seller1[seller_id] = by_seller1.get(seller_id, 0.0) + price * qty
-    for seller_id, amount in by_seller1.items():
-        cur.execute(
-            """INSERT INTO order_payments (order_id, seller_id, amount, qr_image_url, buyer_confirmed_at, seller_confirmed_at, status)
-               VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'completed')""",
-            (order1_id, seller_id, amount, DEMO_QR),
-        )
-        cur.execute(
-            """UPDATE products SET
-                   sold_count = sold_count + (SELECT COALESCE(SUM(quantity),0) FROM order_items WHERE order_id=%s AND seller_id=%s AND product_id=products.id),
-                   stock = GREATEST(0, stock - (SELECT COALESCE(SUM(quantity),0) FROM order_items WHERE order_id=%s AND seller_id=%s AND product_id=products.id))
-               WHERE id IN (SELECT product_id FROM order_items WHERE order_id=%s AND seller_id=%s)""",
-            (order1_id, seller_id, order1_id, seller_id, order1_id, seller_id),
-        )
-
-    # --- đơn hàng mẫu #2: Phạm Thị Lan — vừa đặt, CHƯA ai xác nhận thanh toán, để demo
-    # luồng "chờ xác nhận" (buyer-confirm / seller-confirm) ngay khi mới cài đặt xong
-    items2 = [("binh-loc", "bt", 1)]
-    subtotal2 = sum(next(p[3] for p in PRODUCTS_SEED if p[0] == pid) * qty for pid, _, qty in items2)
-    shipping_fee2 = 20_000
-    cur.execute(
-        """INSERT INTO orders
-           (buyer_id, recipient_name, recipient_email, recipient_phone, shipping_address, shipping_method,
-            shipping_fee, discount_amount, total_price, status)
-           VALUES (%s, %s, %s, %s, %s, 'standard', %s, 0, %s, 'pending') RETURNING id""",
-        (lan_id, "Phạm Thị Lan", "phamthilan@gmail.com", "0933112244",
-         "45 Trần Hưng Đạo, P. Cầu Kho, TP. Hồ Chí Minh", shipping_fee2, subtotal2 + shipping_fee2),
-    )
-    order2_id = cur.fetchone()[0]
-    for pid, v_code, qty in items2:
-        price = next(p[3] for p in PRODUCTS_SEED if p[0] == pid)
-        seller_id = seller_user_id[v_code]
-        cur.execute(
-            "INSERT INTO order_items (order_id, product_id, seller_id, quantity, price_at_purchase) VALUES (%s, %s, %s, %s, %s)",
-            (order2_id, product_id[pid], seller_id, qty, price),
-        )
-        cur.execute(
-            "INSERT INTO order_payments (order_id, seller_id, amount, qr_image_url) VALUES (%s, %s, %s, %s)",
-            (order2_id, seller_id, price * qty, DEMO_QR),
-        )
-        cur.execute(
-            "INSERT INTO notifications (user_id, type, title, message, order_id) VALUES (%s, 'new_order', 'Bạn có đơn hàng mới', %s, %s)",
-            (seller_id, f"Đơn hàng #{order2_id} vừa được đặt — vui lòng chuẩn bị hàng và kiểm tra thanh toán.", order2_id),
-        )
+    # không seed đơn hàng demo — mọi đơn hàng (và lượt "đã bán") đều phải do người mua thật đặt
 
 
 def create_database(database_url=None):
