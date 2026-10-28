@@ -1,4 +1,4 @@
-"""Mô tả chi tiết + câu chuyện cho 13 sản phẩm mẫu, khoá theo tên sản phẩm.
+"""Mô tả chi tiết + câu chuyện cho 24 sản phẩm mẫu, khoá theo tên sản phẩm.
 
 Dùng ở 2 nơi:
   - create_db.py: seed database mới.
@@ -355,6 +355,215 @@ PRODUCT_CONTENT: dict[str, dict[str, str]] = {
             "chuyện ấy cũng được đan vào từng hàng nan.\n\n"
             "Cầm chiếc túi trên tay, bạn sẽ cảm nhận được sự mịn màng của những sợi mây đã qua hàng nghìn lần "
             "chạm tay — một vẻ đẹp chậm rãi, bền bỉ giữa nhịp sống vội vàng."
+        ),
+    },
+    # ------------------------------------------------- đồ dùng hằng ngày giá mềm (bổ sung)
+    "Cốc gốm men tro quai tròn": {
+        "description": (
+            "Cốc gốm dáng trụ, quai tròn vừa ngón tay, phủ men tro xám trắng mộc mạc. Phần chân cốc để mộc, "
+            "lộ ra màu đất nung nâu ấm — dấu hiệu dễ nhận của đồ gốm làm tay.\n\n"
+            "Dung tích khoảng 300ml, hợp để uống cà phê, trà, sữa hay nước lọc hằng ngày. Thành cốc dày vừa "
+            "phải nên cầm không bị nóng tay, đặt lên bàn chắc chắn, ít bị đổ.\n\n"
+            "Men tro được nung ở nhiệt độ cao nên bề mặt cứng, không thấm nước, rửa sạch dễ dàng. Mỗi chiếc "
+            "có vệt men chảy và chấm sắt nhỏ hơi khác nhau, không chiếc nào giống hệt chiếc nào.\n\n"
+            "Dùng được với lò vi sóng và máy rửa bát. Tránh đổ nước sôi vào cốc vừa lấy từ tủ lạnh ra."
+        ),
+        "story": (
+            "Ở xưởng Gốm Minh Long, những chiếc cốc men tro là \"bài tập\" đầu tiên của thợ trẻ. Trước khi "
+            "được động vào men hỏa biến hay vẽ vàng, ai cũng phải kéo cho đều tay vài trăm chiếc cốc trên bàn "
+            "xoay.\n\n"
+            "Men tro là loại men xưa nhất của làng: tro rơm, tro củi được ngâm, lọc nhiều lần rồi pha với đất "
+            "sét. Người Bát Tràng xưa không có men công nghiệp, họ dùng chính những gì có trong bếp nhà mình. "
+            "Màu xám trắng của chiếc cốc vì thế rất gần với màu khói bếp, màu tro quê.\n\n"
+            "Chiếc cốc giản dị, giá mềm, nhưng vẫn qua đủ các bước như một món đồ cao cấp: nặn, phơi, sửa "
+            "cốt, tráng men, nung. Ông Minh bảo: \"Đồ dùng hằng ngày mới là đồ khó, vì người ta cầm nó mỗi "
+            "sáng — chỗ nào vụng là biết ngay.\"\n\n"
+            "Mong chiếc cốc sẽ thành người bạn quen của bạn trong mỗi buổi sáng."
+        ),
+    },
+    "Bộ 3 bát gốm vẽ hoa văn": {
+        "description": (
+            "Bộ 3 bát gốm Bát Tràng, mỗi chiếc một hoa văn riêng: hoa nhí vàng, hoa dây hồng và ô trám xanh "
+            "lam. Xếp chồng lên nhau trông như một bó hoa nhỏ trên bàn ăn.\n\n"
+            "Đường kính miệng khoảng 12cm, vừa một bát cơm, bát canh nhỏ hay bát chè, sữa chua, ngũ cốc buổi "
+            "sáng. Lòng bát tráng men trắng trơn, dễ nhìn thức ăn và dễ rửa.\n\n"
+            "Hoa văn được vẽ và in men dưới lớp men bóng rồi nung chung, nên màu không bong tróc khi dùng lâu "
+            "hay rửa nhiều lần.\n\n"
+            "Dùng được với lò vi sóng và máy rửa bát. Hợp làm quà tân gia hoặc tặng các cặp đôi mới dọn về "
+            "nhà chung."
+        ),
+        "story": (
+            "Mâm cơm Việt chưa bao giờ thiếu chiếc bát. Ở Bát Tràng, bát ăn cơm là món hàng mà gần như nhà nào "
+            "cũng từng làm, từ thời ông bà còn chở bát bằng thuyền ngược sông Hồng đi bán khắp các chợ.\n\n"
+            "Bộ bát này do mấy cô thợ trẻ trong xưởng nghĩ ra. Các cô muốn những chiếc bát quen thuộc có thêm "
+            "chút vui mắt, nên mỗi người chọn vẽ một kiểu hoa mình thích — rồi gom lại thành một bộ ba. Không "
+            "có chiếc nào \"chính\", chiếc nào \"phụ\", cũng như ba người ngồi chung một mâm.\n\n"
+            "Mong bộ bát sẽ góp mặt trong những bữa cơm nhà ấm áp của bạn."
+        ),
+    },
+    "Chén gốm men màu nhỏ": {
+        "description": (
+            "Chén gốm nhỏ làm tay, miệng loe nhẹ, phủ men màu đất: nâu đất, xám tro, trắng ngà, vàng mật và "
+            "xanh rêu. Mặt ngoài để vệt bàn xoay tự nhiên, lòng chén men bóng.\n\n"
+            "Đường kính khoảng 8cm, dùng làm chén uống trà, chén nước chấm, đựng gia vị, hạt, mứt; hoặc làm "
+            "đĩa nhỏ để nhẫn, kẹp tóc, bông tai trên bàn trang điểm.\n\n"
+            "Bán lẻ theo chiếc để bạn tự phối màu: mua một chiếc cho mình, hoặc chọn năm màu khác nhau thành "
+            "một bộ ngũ sắc.\n\n"
+            "Màu men có thể đậm nhạt hơi khác ảnh do lửa lò mỗi mẻ một khác — đó là nét riêng của gốm thủ công."
+        ),
+        "story": (
+            "Cuối mỗi mẻ lò, người thợ Bát Tràng thường còn dư lại chút men mỗi loại. Thay vì bỏ đi, xưởng "
+            "Minh Long dùng chỗ men ấy cho những chiếc chén nhỏ — nên chén có đủ màu như bảng màu của cả một "
+            "mùa làm gốm.\n\n"
+            "Chén được kéo trên bàn xoay rất nhanh, mỗi chiếc chỉ vài phút, nhưng phải đều tay mới giữ được "
+            "thành mỏng và miệng tròn. Đây cũng là món mà khách tham quan làng gốm hay được thử tự làm.\n\n"
+            "Một chiếc chén nhỏ, giá rẻ, nhưng là cách dễ nhất để mang một chút màu đất Bát Tràng về nhà."
+        ),
+    },
+    "Lọ hoa gốm men lam cổ cao": {
+        "description": (
+            "Lọ hoa dáng bầu, cổ cao thon, phủ men lam sẫm có những đốm men loang nhẹ như bầu trời đêm. Dáng "
+            "lọ thanh mảnh, cao khoảng 20cm.\n\n"
+            "Miệng lọ nhỏ, hợp cắm một đến ba cành: một bông hồng, nhành lan, cành đào, cành mai mùa Tết hay "
+            "vài cọng hoa khô. Không cắm hoa, chiếc lọ đứng một mình trên kệ sách cũng đủ làm góc phòng "
+            "dịu lại.\n\n"
+            "Lòng lọ tráng men kín, đựng nước không thấm. Đáy lọ đầm, đặt trên bàn làm việc hay bậu cửa sổ "
+            "đều vững."
+        ),
+        "story": (
+            "Men lam là sắc men đã gắn với gốm Bát Tràng từ hàng trăm năm, xuất hiện trên những chiếc bát đĩa, "
+            "lư hương, chân đèn mà các cụ để lại. Sắc lam sẫm được pha từ ô-xít coban, khi gặp lửa thì lên "
+            "màu xanh sâu như mặt sông Hồng lúc chiều muộn.\n\n"
+            "Chiếc lọ cổ cao này là cách xưởng Minh Long đưa sắc lam ấy vào những món đồ nhỏ, giá vừa phải, "
+            "để ai cũng có thể giữ một chút gốm cổ trong nhà. Mỗi chiếc lọ đi qua tay người kéo cốt, người "
+            "sửa dáng và người nhúng men — ba người, ba lần chạm.\n\n"
+            "Hy vọng mỗi cành hoa bạn cắm vào sẽ tươi lâu hơn một chút."
+        ),
+    },
+    "Dây buộc tóc lụa": {
+        "description": (
+            "Dây buộc tóc (scrunchie) bọc lụa mềm, lõi chun co giãn tốt. Mặt lụa trơn bóng giúp giảm ma sát, "
+            "hạn chế làm gãy tóc, rối tóc hay để lại vết hằn như dây chun thường.\n\n"
+            "Bốn màu: hồng phấn, xanh cổ vịt, xanh bạc hà và tím oải hương. Buộc tóc đuôi ngựa, búi tóc khi "
+            "làm việc, hoặc đeo ở cổ tay như một chiếc vòng.\n\n"
+            "Giặt tay nhẹ bằng nước mát, phơi trong bóng râm để lụa giữ màu. Một món quà nhỏ, giá mềm, rất hợp "
+            "để tặng bạn bè."
+        ),
+        "story": (
+            "Ở xưởng Lụa Hoa, mỗi tấm lụa sau khi cắt may khăn, áo đều để lại những mảnh vụn. Ngày trước, "
+            "chỗ lụa ấy được bán theo cân hoặc bỏ đi. Bà Hoa thấy tiếc, vì đó vẫn là lụa tơ tằm, vẫn là công "
+            "ươm tơ, dệt sợi của người làng.\n\n"
+            "Thế là những mảnh lụa nhỏ được gom lại, cắt thành dải và may thành dây buộc tóc. Việc may do các "
+            "cô, các bà trong làng nhận về làm thêm lúc rảnh, mỗi chiếc mất chừng mười lăm phút.\n\n"
+            "Một chiếc dây buộc tóc là một mảnh lụa Vạn Phúc được sống tiếp — nhỏ thôi, nhưng không phí phần "
+            "nào của nghề."
+        ),
+    },
+    "Khăn lụa dài in hoa văn": {
+        "description": (
+            "Khăn lụa dài khổ 50 x 170cm, in hoa văn nhiều màu rực rỡ, mép khăn may viền tay gọn gàng. Chất "
+            "lụa mỏng nhẹ, rủ mềm, quàng cổ hay choàng vai đều đẹp.\n\n"
+            "Ba tông màu để chọn: hồng tím, xanh ngọc và cam đỏ. Hoa văn trên mỗi chiếc khăn có thể lệch nhau "
+            "một chút do vị trí cắt trên cây vải.\n\n"
+            "Ngoài quàng cổ, có thể buộc làm băng đô, thắt ở quai túi xách, hoặc gấp làm khăn trải bàn nhỏ "
+            "khi chụp ảnh. Giặt tay nhẹ, không vắt xoắn, là ở nhiệt độ thấp."
+        ),
+        "story": (
+            "Vạn Phúc nổi tiếng với lụa dệt hoa văn chìm, nhưng làng cũng có những xưởng làm khăn in màu "
+            "phục vụ khách du lịch và các bạn trẻ thích sự tươi tắn. Những chiếc khăn này giá mềm hơn khăn "
+            "dệt hoa, nên là món quà phổ biến nhất mà khách mang về sau mỗi chuyến ghé làng.\n\n"
+            "Đi dọc phố lụa Vạn Phúc, bạn sẽ thấy cả dãy khăn treo đung đưa trước cửa hàng như một dải cầu "
+            "vồng. Bà Hoa vẫn treo khăn như vậy trước xưởng mình, vì theo bà, \"khăn phải bay trong gió thì "
+            "khách mới thấy được độ mềm của lụa.\"\n\n"
+            "Mong chiếc khăn sẽ theo bạn qua nhiều chuyến đi."
+        ),
+    },
+    "Lụa trơn màu ngà (bán theo mét)": {
+        "description": (
+            "Lụa trơn màu ngà dệt tại Vạn Phúc, khổ vải 90cm, bán theo mét: số lượng bạn chọn chính là số mét "
+            "vải. Mặt lụa bóng nhẹ, mềm, rủ đẹp, có độ mát tự nhiên khi chạm vào da.\n\n"
+            "Phù hợp để may áo sơ mi, váy, áo dài lót, khăn, vỏ gối, hoặc làm khăn phủ, vải chụp ảnh sản "
+            "phẩm. Gợi ý: một chiếc sơ mi cần khoảng 1,8 - 2m; một vỏ gối nằm khoảng 0,8m.\n\n"
+            "Nên giặt thử một mảnh nhỏ trước khi may. Giặt tay bằng nước mát với xà phòng trung tính, phơi "
+            "trong bóng râm."
+        ),
+        "story": (
+            "Trước khi có những chiếc khăn, chiếc áo, lụa Vạn Phúc vốn được bán theo cây, theo mét ở chợ. "
+            "Người Hà Nội xưa mua lụa về nhờ thợ may đầu ngõ cắt áo cho cả nhà, nhất là vào dịp cuối năm.\n\n"
+            "Xưởng Lụa Hoa vẫn giữ quầy bán lụa theo mét như thế, cho những ai thích tự may hoặc muốn đặt thợ "
+            "quen. Màu ngà là màu được hỏi nhiều nhất: dễ mặc, dễ phối, và là màu gần nhất với màu tơ tằm khi "
+            "vừa ươm xong.\n\n"
+            "Mỗi mét lụa là kết quả của cả một chuỗi việc: nuôi tằm, ươm tơ, mắc cửi, dệt và hoàn tất. Mong "
+            "bạn sẽ may từ nó một thứ mặc thật lâu."
+        ),
+    },
+    "Lót ly mây đan tròn": {
+        "description": (
+            "Lót ly đan tay hình tròn, đường kính khoảng 11cm, viền mây quấn chặt, giữa đan nan dày. Kê dưới "
+            "cốc cà phê, ly trà đá, cốc nước nóng để bảo vệ mặt bàn khỏi vết nước và nhiệt.\n\n"
+            "Mặt đan phẳng, đặt ly vững, không trượt. Sợi tự nhiên thấm hút nhẹ những giọt nước đọng ngoài "
+            "thành ly.\n\n"
+            "Bán lẻ theo chiếc, mua 4 - 6 chiếc cho bàn ăn gia đình hoặc quầy cà phê nhỏ. Lau bằng khăn ẩm, "
+            "phơi khô thoáng sau khi dùng."
+        ),
+        "story": (
+            "Ở Phú Vinh, trẻ con học đan thường bắt đầu từ những chiếc lót ly. Hình tròn nhỏ, chỉ cần đan "
+            "vòng xoáy từ tâm ra ngoài, nhưng phải giữ nan đều thì chiếc lót mới phẳng, không vênh.\n\n"
+            "Ông Phú vẫn giữ chiếc lót ly đầu tiên mình đan từ hồi mười tuổi, méo mó và lỏng nan. Bây giờ, "
+            "những chiếc lót ly của xưởng do các bác lớn tuổi đan lúc rảnh tay, vừa đan vừa trông cháu.\n\n"
+            "Một món đồ nhỏ xíu, giá chỉ bằng một cốc trà đá, nhưng là nơi khởi đầu của cả nghề đan làng "
+            "Phú Vinh."
+        ),
+    },
+    "Giỏ mây đan quai xách": {
+        "description": (
+            "Giỏ mây đan tay dáng thuyền, miệng rộng, quai xách cong cao chắc chắn. Sợi mây được nhuộm màu nâu "
+            "trầm, nan đan khít, viền miệng quấn kép để giỏ cứng cáp.\n\n"
+            "Dùng đựng hoa quả, bánh mì trên bàn ăn; đựng len, đồ khâu; làm giỏ đi chợ nhỏ, giỏ đi picnic hoặc "
+            "cắm hoa trang trí. Cũng rất hợp làm giỏ quà Tết.\n\n"
+            "Giỏ đã được xử lý chống mối mọt. Tránh ngâm nước, để nơi khô thoáng."
+        ),
+        "story": (
+            "Chiếc giỏ có quai là món đồ quen thuộc trong mọi gian bếp nông thôn Bắc Bộ. Bà ngoại xách giỏ đi "
+            "chợ sớm, mẹ dùng giỏ đựng rau, đựng trứng gà; những chiếc giỏ ấy có khi dùng đến chục năm mới "
+            "hỏng.\n\n"
+            "Ở xưởng Mây Tre Phú An, quai giỏ được uốn từ một sợi mây lớn đã hơ lửa cho mềm, rồi đan cố định "
+            "vào thân giỏ. Đây là công đoạn quyết định giỏ có bền hay không, nên luôn do thợ lành nghề nhất "
+            "làm.\n\n"
+            "Mong chiếc giỏ sẽ theo bạn qua nhiều phiên chợ, nhiều buổi dã ngoại."
+        ),
+    },
+    "Khay mây đan tròn có quai": {
+        "description": (
+            "Khay mây đan tròn, thành thấp, hai bên có quai cầm uốn cong. Đáy đan nan dày, mặt khay phẳng để "
+            "đặt cốc, ấm, đĩa bánh mà không bị nghiêng.\n\n"
+            "Đường kính khoảng 35cm, vừa để bưng bữa sáng lên giường, bày ấm chén tiếp khách, đặt đồ trên bàn "
+            "trà hay gom gọn chai lọ trên bàn trang điểm.\n\n"
+            "Mây tự nhiên, màu sáng, càng dùng càng lên màu bóng đẹp. Lau bằng khăn ẩm, không ngâm nước."
+        ),
+        "story": (
+            "Người Phú Vinh gọi đây là \"khay bưng\": cái khay mà ngày trước nhà nào cũng có, dùng để bưng "
+            "nước mời khách, bưng mâm cỗ nhỏ, bưng trầu cau trong ngày cưới hỏi.\n\n"
+            "Ngày nay khay được làm thêm hai quai cầm cho tiện tay, nhưng kỹ thuật đan đáy vẫn giữ như cũ: "
+            "đan từ tâm ra theo vòng tròn, nan phải siết đều để đáy khay phẳng và chịu được sức nặng.\n\n"
+            "Một chiếc khay giản dị, để những buổi trà, bữa sáng của bạn có thêm chút thong thả."
+        ),
+    },
+    "Quạt lá cọ đan tay": {
+        "description": (
+            "Quạt lá cọ làm từ lá cọ non phơi khô, ép phẳng và cắt tròn, cán tre nhỏ gọn. Quạt nhẹ, gió mát "
+            "và có mùi thơm nhẹ của lá khô.\n\n"
+            "Dùng để quạt mát ngày hè, mang theo khi đi chơi, đi chùa, hoặc treo tường làm đồ trang trí theo "
+            "phong cách mộc mạc. Ba chiếc treo cạnh nhau trên tường trắng là đã có một góc chụp ảnh xinh.\n\n"
+            "Màu lá có thể đậm nhạt khác nhau đôi chút do phơi nắng tự nhiên. Tránh để nơi ẩm ướt."
+        ),
+        "story": (
+            "Trước khi có quạt điện, những trưa hè ở làng quê Bắc Bộ gắn liền với tiếng quạt lá phành phạch "
+            "của bà, của mẹ ru con ngủ. Chiếc quạt lá cọ rẻ tiền, nhà nào cũng có vài chiếc treo ở cột nhà.\n\n"
+            "Lá cọ được chọn từ những tàu lá non, phơi nhiều nắng cho khô giòn rồi ép phẳng dưới vật nặng. "
+            "Người thợ cắt viền, nẹp cán tre và khâu chặt bằng sợi mây nhỏ.\n\n"
+            "Xưởng Mây Tre Phú An làm quạt lá cọ như một món quà nhỏ cho những ai muốn giữ lại một chút "
+            "mùa hè ngày xưa."
         ),
     },
 }

@@ -54,7 +54,7 @@ app/
     orders.py     POST /api/orders · POST /api/orders/{id}/confirm-payment · GET /api/orders
     reviews.py    GET/POST /api/products/{id}/reviews · DELETE /api/products/{id}/reviews/me
     passport.py   GET/DELETE /api/passport · POST /api/passport/stamps (Hộ chiếu di sản theo tài khoản)
-create_db.py      tạo bảng/trigger + seed dữ liệu mẫu trong Postgres (13 sản phẩm thật lấy từ script.js)
+create_db.py      tạo bảng/trigger + seed dữ liệu mẫu trong Postgres (24 sản phẩm, không có đánh giá/lượt bán ảo)
 database-schema.md  mô tả đầy đủ schema, trigger, lý do thiết kế (viết theo cú pháp SQLite cũ — tham
                     khảo cấu trúc bảng, phần trigger thực tế đã chuyển sang PL/pgSQL trong create_db.py)
 ```

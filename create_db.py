@@ -1,7 +1,8 @@
 """
 Tạo schema (bảng, index, trigger) trong PostgreSQL theo đúng cấu trúc mô tả trong
 database-schema.md, đồng thời chèn sẵn dữ liệu mẫu lấy từ chính giao diện trang web
-(13 sản phẩm thật trong script.js, 3 làng nghề, người bán/người mua mẫu) để database
+(24 sản phẩm: 13 sản phẩm gốc trong script.js + 11 món đồ dùng giá mềm, 3 làng nghề,
+người bán/người mua mẫu) để database
 dùng được ngay cho việc demo/truy vấn thử — không phải bảng rỗng.
 
 Đăng nhập giờ dùng USERNAME (không còn dùng email). Mật khẩu demo của mọi user mẫu
@@ -321,69 +322,116 @@ CREATE_TABLES_SQL = [
 ]
 
 
-# ---- dữ liệu mẫu: 13 sản phẩm thật đang hiển thị trên Sàn thương mại (script.js) ----
+# ---- dữ liệu mẫu: 13 sản phẩm gốc trên Sàn thương mại (script.js) + 11 món giá mềm, đủ 2 trang Shop ----
 PROD_DIR = "assets/product_img/"
 DEMO_QR = "assets/qr_code.png"
 
 # (id_tmp, tên, làng, giá, giá gốc (None nếu không sale), tồn kho, đã bán, mô tả, ảnh,
 #  chất liệu, hướng dẫn size, màu (csv), size (csv))
 PRODUCTS_SEED = [
-    ("am-tra", "Bộ ấm trà men hỏa biến", "bt", 1_450_000, None, 24, 980,
+    ("am-tra", "Bộ ấm trà men hỏa biến", "bt", 1_450_000, None, 24, 0,
      "Bộ ấm trà phủ men hỏa biến xanh ngọc — sắc men biến ảo theo nhiệt độ lò nung, kèm đĩa và khay hoa xanh.",
      "Bộ Ấm Trà Đĩa Men Hỏa Biến Xanh Khay Hoa Xanh.png",
      "Gốm sứ Bát Tràng nung men hỏa biến", None, None, None),
-    ("hu-tra", "Hũ đựng trà Mã Đáo Thành Công", "bt", 1_180_000, None, 18, 1100,
+    ("hu-tra", "Hũ đựng trà Mã Đáo Thành Công", "bt", 1_180_000, None, 18, 0,
      "Hũ sứ men xanh vẽ vàng họa tiết \"Mã Đáo Thành Công\" — biểu tượng cát tường, may mắn.",
      "Hũ Đựng Trà Men Xanh Mã Đáo Thành Công Vẽ Vàng.png",
      "Gốm sứ Bát Tràng vẽ vàng", None, None, None),
-    ("dia-sen", "Đĩa trưng bày hoa sen ánh trăng", "bt", 1_350_000, None, 15, 640,
+    ("dia-sen", "Đĩa trưng bày hoa sen ánh trăng", "bt", 1_350_000, None, 15, 0,
      "Đĩa trưng bày đắp nổi, vẽ màu hoa sen dưới ánh trăng — tinh xảo trong từng cánh sen.",
      "Đĩa Trưng Bày Đắp Nổi Vẽ Màu Hoa Sen Ánh Trăng.png",
      "Gốm sứ Bát Tràng đắp nổi", None, None, None),
-    ("cavat-lua", "Cà vạt lụa tơ tằm", "vp", 680_000, None, 40, 2300,
+    ("cavat-lua", "Cà vạt lụa tơ tằm", "vp", 680_000, None, 40, 0,
      "Cà vạt dệt 100% lụa tơ tằm Vạn Phúc, sắc đỏ đô sang trọng với hoa văn chìm tinh tế.",
      "CARAVAT LỤA TƠ TẰM NGHỆ NHÂN đỏ đô.png",
      "Lụa tơ tằm 100%", "Cà vạt khổ chuẩn — dài 148cm, bản to 8.5cm, phù hợp mọi vóc dáng.",
      "Đỏ đô,Xanh navy,Đen", None),
-    ("khan-sen", "Khăn lụa vân sen hồng", "vp", 920_000, None, 30, 1700,
+    ("khan-sen", "Khăn lụa vân sen hồng", "vp", 920_000, None, 30, 0,
      "Khăn lụa vân sen phối sắc hồng — hoa văn sen ẩn hiện khi soi nắng, dệt thủ công.",
      "Khăn lụa vân Sen hồng phối màu.png",
      "Lụa tơ tằm 100%", None, "Hồng phấn,Xanh ngọc,Vàng nhạt", None),
-    ("hop-may", "Hộp đựng đồ mây tre đan", "pv", 540_000, None, 35, 860,
+    ("hop-may", "Hộp đựng đồ mây tre đan", "pv", 540_000, None, 35, 0,
      "Hộp đựng đồ đan tay từ mây tre Phú Vinh theo kỹ thuật nong đôi bền chắc.",
      "Hộp đựng đồ Mây Tre Đan.png",
      "Mây tre tự nhiên", "Có 3 cỡ: Nhỏ (15cm), Vừa (20cm), Lớn (25cm) — đo theo đường kính đáy hộp.",
      None, "Nhỏ,Vừa,Lớn"),
-    ("tui-may", "Túi đeo chéo mây tre đan", "pv", 750_000, None, 28, 1400,
+    ("tui-may", "Túi đeo chéo mây tre đan", "pv", 750_000, None, 28, 0,
      "Túi đeo chéo đan tay phối quai mây tròn, hoa văn xương cá đặc trưng Phú Vinh.",
      "Túi Đeo Chéo Mây Tre Đan.png",
      "Mây tre tự nhiên phối da", None, "Mây tự nhiên,Mây nhuộm nâu", None),
-    ("binh-loc", "Bình hút lộc Mã Đáo Thành Công", "bt", 2_200_000, None, 10, 420,
+    ("binh-loc", "Bình hút lộc Mã Đáo Thành Công", "bt", 2_200_000, None, 10, 0,
      "Bình hút lộc dáng tròn đầy, vẽ tay họa tiết \"Mã Đáo Thành Công\" trên nền men cao cấp.",
      "Bình hút lộc Bát Tràng vẽ mã đáo thành công.png",
      "Gốm sứ Bát Tràng cao cấp", None, None, None),
-    ("binh-sen", "Bình sen vàng kim men xanh đồng", "bt", 2_850_000, None, 8, 260,
+    ("binh-sen", "Bình sen vàng kim men xanh đồng", "bt", 2_850_000, None, 8, 0,
      "Bình cắm hoa men xanh đồng phủ vàng kim, đắp nổi hoa sen — quốc hoa của Việt Nam.",
      "Bình sen vàng kim cao cấp men xanh đồng.png",
      "Gốm sứ Bát Tràng phủ vàng kim", None, None, None),
-    ("dia-bau", "Đĩa sứ bầu dục men lam", "bt", 890_000, 990_000, 22, 730,
+    ("dia-bau", "Đĩa sứ bầu dục men lam", "bt", 890_000, 990_000, 22, 0,
      "Đĩa sứ dáng bầu dục vẽ men lam cổ điển — vừa để bày biện món ăn, vừa làm vật trang trí.",
      "Đĩa sứ bầu dục.png",
      "Gốm sứ Bát Tràng men lam", None, None, None),
-    ("khan-nguson", "Khăn tơ ngũ sắc xanh cam", "vp", 780_000, 850_000, 26, 1200,
+    ("khan-nguson", "Khăn tơ ngũ sắc xanh cam", "vp", 780_000, 850_000, 26, 0,
      "Khăn tơ tằm phối ngũ sắc xanh — cam rực rỡ, dệt thủ công tại Vạn Phúc.",
      "Khăn tơ ngũ sắc xanh cam.png",
      "Tơ tằm", None, "Xanh - Cam,Hồng - Tím", None),
-    ("aodai-lua", "Áo dài lụa tơ tằm Hà Đông", "vp", 3_600_000, None, 6, 180,
+    ("aodai-lua", "Áo dài lụa tơ tằm Hà Đông", "vp", 3_600_000, None, 6, 0,
      "Áo dài may từ lụa tơ tằm Hà Đông nguyên tấm, hoa văn cẩm giao trang nhã.",
      "Áo dài lụa tơ tằm Hà Đông cẩm giao.png",
      "Lụa tơ tằm Hà Đông nguyên tấm",
      "Chọn size theo số đo vòng ngực: S (78-82cm), M (83-87cm), L (88-92cm), XL (93-97cm).",
      "Đỏ đô,Xanh ngọc,Vàng đồng", "S,M,L,XL"),
-    ("tui-ruot-may", "Túi đan ruột mây hình chữ nhật", "pv", 690_000, None, 32, 540,
+    ("tui-ruot-may", "Túi đan ruột mây hình chữ nhật", "pv", 690_000, None, 32, 0,
      "Túi dáng hộp chữ nhật đan từ ruột mây Phú Vinh, nan mảnh đều tăm tắp.",
      "Túi Đan ruột mây hình chữ nhật.png",
      "Ruột mây tự nhiên", None, None, None),
+    # đồ dùng hằng ngày giá mềm — ảnh lấy từ Unsplash (Unsplash License, dùng thương mại miễn phí)
+    ("coc-men-tro", "Cốc gốm men tro quai tròn", "bt", 95_000, None, 60, 0,
+     "Cốc gốm dáng trụ, men tro xám trắng, chân để mộc — dung tích khoảng 300ml cho trà, cà phê mỗi sáng.",
+     "Cốc gốm men tro quai tròn.jpg",
+     "Gốm Bát Tràng men tro", None, None, None),
+    ("bat-hoa-van", "Bộ 3 bát gốm vẽ hoa văn", "bt", 135_000, None, 40, 0,
+     "Bộ 3 bát ăn cơm, mỗi chiếc một hoa văn: hoa nhí vàng, hoa dây hồng, ô trám xanh lam.",
+     "Bộ 3 bát gốm vẽ hoa văn.jpg",
+     "Gốm sứ Bát Tràng vẽ men màu", "Đường kính miệng bát khoảng 12cm, cao 6cm — 1 bộ gồm 3 chiếc.", None, None),
+    ("chen-men-mau", "Chén gốm men màu nhỏ", "bt", 25_000, None, 150, 0,
+     "Chén gốm nhỏ làm tay, men màu đất — dùng uống trà, đựng nước chấm, gia vị hay đồ trang sức nhỏ.",
+     "Bộ chén gốm men màu.jpg",
+     "Gốm Bát Tràng men màu", "Đường kính khoảng 8cm, cao 4cm — bán lẻ theo chiếc.",
+     "Nâu đất,Xám tro,Trắng ngà,Vàng mật,Xanh rêu", None),
+    ("lo-men-lam", "Lọ hoa gốm men lam cổ cao", "bt", 150_000, None, 25, 0,
+     "Lọ hoa dáng bầu cổ cao, men lam sẫm loang nhẹ — vừa cắm một đến ba cành hoa.",
+     "Lọ hoa gốm men lam cổ cao.jpg",
+     "Gốm Bát Tràng men lam", "Cao khoảng 20cm, đường kính thân 8cm.", None, None),
+    ("buoc-toc-lua", "Dây buộc tóc lụa", "vp", 45_000, None, 120, 0,
+     "Dây buộc tóc bọc lụa mềm, lõi chun co giãn — hạn chế gãy rối tóc, may từ lụa thừa của xưởng.",
+     "Dây buộc tóc lụa.jpg",
+     "Lụa tơ tằm Vạn Phúc, lõi chun", None, "Hồng phấn,Xanh cổ vịt,Xanh bạc hà,Tím oải hương", None),
+    ("khan-in-hoa", "Khăn lụa dài in hoa văn", "vp", 165_000, None, 45, 0,
+     "Khăn lụa dài in hoa văn nhiều màu, mỏng nhẹ, rủ mềm — quàng cổ hay choàng vai đều đẹp.",
+     "Khăn lụa dài in hoa văn.jpg",
+     "Lụa Vạn Phúc in hoa", "Khổ khăn 50 x 170cm.", "Hồng tím,Xanh ngọc,Cam đỏ", None),
+    ("lua-tron-nga", "Lụa trơn màu ngà (bán theo mét)", "vp", 210_000, None, 80, 0,
+     "Lụa trơn màu ngà dệt tại Vạn Phúc, khổ 90cm, bán theo mét — may áo, váy, khăn, vỏ gối.",
+     "Lụa tơ tằm trơn màu ngà.jpg",
+     "Lụa tơ tằm Vạn Phúc dệt trơn",
+     "Khổ vải 90cm. Số lượng = số mét vải (vd. chọn 2 là 2 mét). Áo sơ mi cần khoảng 1,8 - 2m.", None, None),
+    ("lot-ly-may", "Lót ly mây đan tròn", "pv", 25_000, None, 150, 0,
+     "Lót ly đan tay hình tròn, viền mây quấn chặt — bảo vệ mặt bàn khỏi vết nước và nhiệt.",
+     "Lót ly mây đan tròn.jpg",
+     "Mây tự nhiên", "Đường kính khoảng 11cm — bán lẻ theo chiếc.", None, None),
+    ("gio-quai-xach", "Giỏ mây đan quai xách", "pv", 120_000, None, 35, 0,
+     "Giỏ mây đan tay dáng thuyền, quai cong cao — đựng hoa quả, bánh mì, đi chợ hay picnic.",
+     "Giỏ mây đan quai xách.jpg",
+     "Mây nhuộm nâu", "Dài khoảng 30cm, cao cả quai 28cm.", None, None),
+    ("khay-may-tron", "Khay mây đan tròn có quai", "pv", 180_000, None, 25, 0,
+     "Khay mây đan tròn hai quai cầm — bưng bữa sáng, bày ấm chén hay gom gọn đồ trên bàn.",
+     "Khay mây đan tròn có quai.jpg",
+     "Mây tự nhiên", "Đường kính khoảng 35cm, thành cao 5cm.", None, None),
+    ("quat-la-co", "Quạt lá cọ đan tay", "pv", 35_000, None, 80, 0,
+     "Quạt lá cọ phơi khô, cán tre nhỏ gọn — quạt mát ngày hè hoặc treo tường trang trí.",
+     "Quạt lá cọ đan tay.jpg",
+     "Lá cọ phơi khô, cán tre", None, None, None),
 ]
 
 VILLAGES_SEED = [
@@ -407,38 +455,6 @@ BUYERS_SEED = [
     ("Phạm Thị Lan", "lan", "phamthilan@gmail.com", "0933112244", "demo123"),
     ("Đỗ Minh Khang", "khang", "dominhkhang@gmail.com", "0977889900", "demo123"),
 ]
-
-# đánh giá mẫu: (mã sản phẩm, người đánh giá, số sao 1-5, bình luận, [ảnh kèm theo]) — người
-# đánh giá không bao giờ trùng chủ shop của sản phẩm đó (không tự đánh giá hàng của mình)
-REVIEWS_SEED = [
-    ("am-tra", "lan", 5, "Men hỏa biến đẹp không tì vết, đóng gói cẩn thận, pha trà rất ngon.", ["assets/product_img/Bộ Ấm Trà Đĩa Men Hỏa Biến Xanh Khay Hoa Xanh.png"]),
-    ("am-tra", "hoa", 5, "Chất gốm dày dặn, rót nước không bị chảy tràn — đáng tiền.", []),
-    ("hu-tra", "khang", 4, "Hũ đẹp, nét vẽ vàng sắc sảo, chỉ hơi nặng tay khi mở nắp.", []),
-    ("hu-tra", "phu", 5, "Giữ trà thơm lâu hẳn, mua tặng bố rất ưng ý.", []),
-    ("dia-sen", "lan", 5, "Hoa văn đắp nổi tinh xảo, để trang trí phòng khách rất sang.", []),
-    ("dia-sen", "khang", 4, "Đĩa đẹp nhưng giao hàng hơi lâu, may là không sứt mẻ gì.", []),
-    ("cavat-lua", "minh", 5, "Lụa mềm mịn thật sự, màu đỏ đô lên rất trang trọng.", []),
-    ("cavat-lua", "phu", 4, "Form cà vạt chuẩn, hộp gỗ đi kèm làm quà biếu rất được.", []),
-    ("khan-sen", "lan", 5, "Khăn nhẹ như không có trên vai, hoa văn sen ẩn hiện đẹp mê.", ["assets/product_img/Khăn lụa vân Sen hồng phối màu.png"]),
-    ("khan-sen", "khang", 5, "Mua tặng mẹ, mẹ khen chất lụa mát và mềm.", []),
-    ("hop-may", "minh", 4, "Đan tay rất khéo, dùng đựng đồ nhỏ trong nhà gọn gàng hẳn.", []),
-    ("hop-may", "hoa", 5, "Mây đều màu, không có mùi ẩm mốc như hàng chợ hay gặp.", []),
-    ("tui-may", "lan", 4, "Túi chắc chắn, quai mây cầm chắc tay, mỗi tội hơi kén trang phục.", []),
-    ("tui-may", "khang", 5, "Đan xương cá rất tinh tế, đi làm hay đi chơi đều hợp.", []),
-    ("binh-loc", "hoa", 5, "Dáng bình đẹp, đặt bàn làm việc ai cũng khen phong thủy.", []),
-    ("binh-loc", "phu", 5, "Nét vẽ vàng sắc nét, đúng như hình quảng cáo.", []),
-    ("binh-sen", "lan", 5, "Men xanh đồng sang trọng, cắm hoa lên nhìn rất có hồn.", []),
-    ("binh-sen", "khang", 4, "Bình đẹp nhưng giá hơi cao so với size, chất lượng thì ổn.", []),
-    ("dia-bau", "hoa", 4, "Đĩa dùng bày món ăn ngày Tết rất hợp, men lam cổ điển.", []),
-    ("dia-bau", "phu", 5, "Cốt sứ mỏng nhẹ mà chắc tay, không lo sứt mẻ khi dùng thường.", []),
-    ("khan-nguson", "minh", 5, "Phối màu xanh cam rất bắt mắt, lên hình chụp ảnh đẹp lắm.", []),
-    ("khan-nguson", "phu", 4, "Khăn đẹp, giao đúng hẹn, đóng gói có túi vải tái sử dụng được.", []),
-    ("aodai-lua", "lan", 5, "Lụa nguyên tấm mặc mát, hoa văn cẩm giao thanh lịch, may rất khéo.", []),
-    ("aodai-lua", "khang", 5, "Mua tặng vợ dịp kỷ niệm, vợ mặc đi tiệc ai cũng khen.", []),
-    ("tui-ruot-may", "minh", 5, "Nan mây đều tăm tắp, dáng hộp cứng cáp mà vẫn nhẹ nhàng.", []),
-    ("tui-ruot-may", "lan", 4, "Túi xinh, hợp đi làm hằng ngày, ước gì có thêm màu khác.", []),
-]
-
 
 def seed_data(conn: psycopg.Connection):
     cur = conn.cursor()
@@ -502,18 +518,8 @@ def seed_data(conn: psycopg.Connection):
     cur.execute("INSERT INTO wishlist_items (buyer_id, product_id) VALUES (%s, %s)", (lan_id, product_id["aodai-lua"]))
     cur.execute("INSERT INTO wishlist_items (buyer_id, product_id) VALUES (%s, %s)", (lan_id, product_id["binh-sen"]))
 
-    # đánh giá mẫu — rating/review_count của products sẽ được TRIGGER tự tính lại
-    # từ chính các dòng reviews này (không gõ tay số liệu để tránh lệch dữ liệu)
-    reviewer_id = {"minh": seller_user_id["bt"], "hoa": seller_user_id["vp"], "phu": seller_user_id["pv"],
-                   "lan": lan_id, "khang": khang_id}
-    for pid, reviewer_key, rating, comment, images in REVIEWS_SEED:
-        cur.execute(
-            "INSERT INTO reviews (product_id, buyer_id, rating, comment) VALUES (%s, %s, %s, %s) RETURNING id",
-            (product_id[pid], reviewer_id[reviewer_key], rating, comment),
-        )
-        review_id = cur.fetchone()[0]
-        for img_url in images:
-            cur.execute("INSERT INTO review_images (review_id, image_url) VALUES (%s, %s)", (review_id, img_url))
+    # không seed đánh giá / số "đã bán" ảo — mọi đánh giá và lượt bán đều phải đến từ
+    # người mua thật (bảng reviews + trigger, order_payments completed + trigger)
 
     # giỏ hàng mẫu — Phạm Thị Lan đang xem 2 món
     cur.execute("INSERT INTO cart_items (buyer_id, product_id, quantity) VALUES (%s, %s, 1)",
